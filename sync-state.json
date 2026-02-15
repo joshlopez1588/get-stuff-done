@@ -1,6 +1,21 @@
 {
-  "last_synced_upstream_version": "1.19.1",
-  "last_synced_upstream_sha": "8b75531b22b904c340965cb31ba76a50a6a7ee84",
-  "last_synced_at": "2026-02-15T00:00:00Z",
-  "fork_version": "1.19.1"
+  "last_synced_upstream_version": "1.19.2",
+  "last_synced_upstream_sha": "1e3194a2331ee12383ed1ec7979c3a01b89b71fb",
+  "last_synced_at": "2026-02-15T12:00:00Z",
+  "fork_version": "1.19.1",
+  "files_synced": {
+    "added": [
+      "commands/gsd/cleanup.md",
+      "get-stuff-done/workflows/cleanup.md"
+    ],
+    "updated": [
+      "get-stuff-done/workflows/audit-milestone.md",
+      "get-stuff-done/workflows/execute-plan.md",
+      "get-stuff-done/workflows/new-milestone.md",
+      "get-stuff-done/workflows/progress.md",
+      "get-stuff-done/workflows/complete-milestone.md"
+    ],
+    "conflicts_resolved": [],
+    "skipped": []
+  }
 }

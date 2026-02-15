@@ -128,7 +128,8 @@ This IS the execution instructions. Follow exactly. If plan references CONTEXT.m
 
 <step name="previous_phase_check">
 ```bash
-ls .planning/phases/*/SUMMARY.md 2>/dev/null | sort -r | head -2 | tail -1
+node ~/.claude/get-stuff-done/bin/gsd-tools.cjs phases list --type summaries --raw
+# Extract the second-to-last summary from the JSON result
 ```
 If previous SUMMARY has unresolved "Issues Encountered" or "Next Phase Readiness" blockers: AskUserQuestion(header="Previous Issues", options: "Proceed anyway" | "Address first" | "Review previous").
 </step>

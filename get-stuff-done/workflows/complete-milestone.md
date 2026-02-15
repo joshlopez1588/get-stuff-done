@@ -212,76 +212,6 @@ Update PROJECT.md inline. Update "Last updated" footer:
 *Last updated: [date] after v[X.Y] milestone*
 ```
 
-**Example full evolution (v1.0 → v1.1 prep):**
-
-Before:
-
-```markdown
-## What This Is
-
-A real-time collaborative whiteboard for remote teams.
-
-## Core Value
-
-Real-time sync that feels instant.
-
-## Requirements
-
-### Validated
-
-(None yet — ship to validate)
-
-### Active
-
-- [ ] Canvas drawing tools
-- [ ] Real-time sync < 500ms
-- [ ] User authentication
-- [ ] Export to PNG
-
-### Out of Scope
-
-- Mobile app — web-first approach
-- Video chat — use external tools
-```
-
-After v1.0:
-
-```markdown
-## What This Is
-
-A real-time collaborative whiteboard for remote teams with instant sync and drawing tools.
-
-## Core Value
-
-Real-time sync that feels instant.
-
-## Requirements
-
-### Validated
-
-- ✓ Canvas drawing tools — v1.0
-- ✓ Real-time sync < 500ms — v1.0 (achieved 200ms avg)
-- ✓ User authentication — v1.0
-
-### Active
-
-- [ ] Export to PNG
-- [ ] Undo/redo history
-- [ ] Shape tools (rectangles, circles)
-
-### Out of Scope
-
-- Mobile app — web-first approach, PWA works well
-- Video chat — use external tools
-- Offline mode — real-time is core value
-
-## Context
-
-Shipped v1.0 with 2,400 LOC TypeScript.
-Tech stack: Next.js, Supabase, Canvas API.
-Initial user testing showed demand for shape tools.
-```
-
 **Step complete when:**
 
 - [ ] "What This Is" reviewed and updated if needed
@@ -359,7 +289,19 @@ Extract from result: `version`, `date`, `phases`, `plans`, `tasks`, `accomplishm
 
 Verify: `✅ Milestone archived to .planning/milestones/`
 
-**Note:** Phase directories (`.planning/phases/`) are NOT deleted — they accumulate across milestones as raw execution history. Phase numbering continues (v1.0 phases 1-4, v1.1 phases 5-8, etc.).
+**Phase archival (optional):** After archival completes, ask the user:
+
+AskUserQuestion(header="Archive Phases", question="Archive phase directories to milestones/?", options: "Yes — move to milestones/v[X.Y]-phases/" | "Skip — keep phases in place")
+
+If "Yes": move phase directories to the milestone archive:
+```bash
+mkdir -p .planning/milestones/v[X.Y]-phases
+# For each phase directory in .planning/phases/:
+mv .planning/phases/{phase-dir} .planning/milestones/v[X.Y]-phases/
+```
+Verify: `✅ Phase directories archived to .planning/milestones/v[X.Y]-phases/`
+
+If "Skip": Phase directories remain in `.planning/phases/` as raw execution history. Use `/gsd:cleanup` later to archive retroactively.
 
 After archival, the AI still handles:
 - Reorganizing ROADMAP.md with milestone grouping (requires judgment)
@@ -563,7 +505,6 @@ Commit milestone completion.
 
 ```bash
 node ~/.claude/get-stuff-done/bin/gsd-tools.cjs commit "chore: complete v[X.Y] milestone" --files .planning/milestones/v[X.Y]-ROADMAP.md .planning/milestones/v[X.Y]-REQUIREMENTS.md .planning/milestones/v[X.Y]-MILESTONE-AUDIT.md .planning/MILESTONES.md .planning/PROJECT.md .planning/STATE.md
-```
 ```
 
 Confirm: "Committed: chore: complete v[X.Y] milestone"

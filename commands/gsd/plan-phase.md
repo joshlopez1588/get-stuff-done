@@ -1,7 +1,7 @@
 ---
 name: gsd:plan-phase
 description: Create detailed execution plan for a phase (PLAN.md) with verification loop
-argument-hint: "[phase] [--research] [--skip-research] [--gaps] [--skip-verify] [--teams] [--team <name>]"
+argument-hint: "[phase] [--auto] [--research] [--skip-research] [--gaps] [--skip-verify] [--teams] [--team <name>]"
 agent: gsd-planner
 allowed-tools:
   - Read
