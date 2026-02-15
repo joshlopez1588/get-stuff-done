@@ -6,6 +6,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- `/gsd:cleanup` command — archive accumulated phase directories from completed milestones
+- `--auto` flag for `/gsd:discuss-phase` and `/gsd:plan-phase` (synced from upstream v1.19.2)
+- `Task` tool added to `/gsd:discuss-phase` allowed-tools
+- Optional phase archival prompt at milestone completion (synced from upstream v1.19.2)
+
+### Changed
+- `audit-milestone` uses `find-phase` for archived phase resolution (synced from upstream v1.19.2)
+- `execute-plan` uses `phases list --type summaries` CLI command (synced from upstream v1.19.2)
+- `progress` init handles tmpfile for large payloads (synced from upstream v1.19.2)
+- `new-milestone` re-added `header max 12 chars` constraint (synced from upstream v1.19.2)
+
 ## [1.18.0] - 2026-02-08
 
 ### Added

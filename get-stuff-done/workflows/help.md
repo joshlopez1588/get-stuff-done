@@ -182,6 +182,15 @@ Archive completed milestone and prepare for next version.
 
 Usage: `/gsd:complete-milestone 1.0.0`
 
+**`/gsd:cleanup`**
+Archive accumulated phase directories from completed milestones.
+
+- Identifies phases belonging to completed milestones
+- Shows dry-run summary before moving anything
+- Moves phase directories to `milestones/v{X.Y}-phases/`
+
+Usage: `/gsd:cleanup`
+
 ### Progress Tracking
 
 **`/gsd:progress`**
