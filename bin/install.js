@@ -832,7 +832,7 @@ function uninstall(isGlobal, runtime = 'claude') {
     console.log(`  ${green}✓${reset} Removed get-shit-done/`);
   }
 
-  // 3. Remove GSD agents (gsd-*.md files only)
+  // 3. Remove GSD agents (gsd-*.md files only, including teams/ subdirectory)
   const agentsDir = path.join(targetDir, 'agents');
   if (fs.existsSync(agentsDir)) {
     const files = fs.readdirSync(agentsDir);
@@ -841,6 +841,21 @@ function uninstall(isGlobal, runtime = 'claude') {
       if (file.startsWith('gsd-') && file.endsWith('.md')) {
         fs.unlinkSync(path.join(agentsDir, file));
         agentCount++;
+      }
+    }
+    // Remove agents/teams/ subdirectory if it exists
+    const teamsDir = path.join(agentsDir, 'teams');
+    if (fs.existsSync(teamsDir)) {
+      const teamFiles = fs.readdirSync(teamsDir);
+      for (const file of teamFiles) {
+        if (file.startsWith('gsd-') && file.endsWith('.md')) {
+          fs.unlinkSync(path.join(teamsDir, file));
+          agentCount++;
+        }
+      }
+      // Remove the directory if empty
+      if (fs.readdirSync(teamsDir).length === 0) {
+        fs.rmdirSync(teamsDir);
       }
     }
     if (agentCount > 0) {
@@ -1188,9 +1203,17 @@ function writeManifest(configDir) {
     }
   }
   if (fs.existsSync(agentsDir)) {
-    for (const file of fs.readdirSync(agentsDir)) {
-      if (file.startsWith('gsd-') && file.endsWith('.md')) {
-        manifest.files['agents/' + file] = fileHash(path.join(agentsDir, file));
+    const agentEntries = fs.readdirSync(agentsDir, { withFileTypes: true });
+    for (const entry of agentEntries) {
+      if (entry.isFile() && entry.name.startsWith('gsd-') && entry.name.endsWith('.md')) {
+        manifest.files['agents/' + entry.name] = fileHash(path.join(agentsDir, entry.name));
+      } else if (entry.isDirectory()) {
+        const subDir = path.join(agentsDir, entry.name);
+        for (const subFile of fs.readdirSync(subDir)) {
+          if (subFile.startsWith('gsd-') && subFile.endsWith('.md')) {
+            manifest.files['agents/' + entry.name + '/' + subFile] = fileHash(path.join(subDir, subFile));
+          }
+        }
       }
     }
   }
@@ -1359,7 +1382,7 @@ function install(isGlobal, runtime = 'claude') {
       }
     }
 
-    // Copy new agents
+    // Copy new agents (including subdirectories like teams/)
     const agentEntries = fs.readdirSync(agentsSrc, { withFileTypes: true });
     for (const entry of agentEntries) {
       if (entry.isFile() && entry.name.endsWith('.md')) {
@@ -1375,6 +1398,35 @@ function install(isGlobal, runtime = 'claude') {
           content = convertClaudeToGeminiAgent(content);
         }
         fs.writeFileSync(path.join(agentsDest, entry.name), content);
+      } else if (entry.isDirectory()) {
+        // Recursively copy agent subdirectories (e.g., teams/)
+        const subSrc = path.join(agentsSrc, entry.name);
+        const subDest = path.join(agentsDest, entry.name);
+        fs.mkdirSync(subDest, { recursive: true });
+        // Remove old GSD agents in subdirectory
+        if (fs.existsSync(subDest)) {
+          for (const subFile of fs.readdirSync(subDest)) {
+            if (subFile.startsWith('gsd-') && subFile.endsWith('.md')) {
+              fs.unlinkSync(path.join(subDest, subFile));
+            }
+          }
+        }
+        // Copy agent files from subdirectory
+        const subEntries = fs.readdirSync(subSrc, { withFileTypes: true });
+        for (const subEntry of subEntries) {
+          if (subEntry.isFile() && subEntry.name.endsWith('.md')) {
+            let content = fs.readFileSync(path.join(subSrc, subEntry.name), 'utf8');
+            const dirRegex = /~\/\.claude\//g;
+            content = content.replace(dirRegex, pathPrefix);
+            content = processAttribution(content, getCommitAttribution(runtime));
+            if (isOpencode) {
+              content = convertClaudeToOpencodeFrontmatter(content);
+            } else if (isGemini) {
+              content = convertClaudeToGeminiAgent(content);
+            }
+            fs.writeFileSync(path.join(subDest, subEntry.name), content);
+          }
+        }
       }
     }
     if (verifyInstalled(agentsDest, 'agents')) {
