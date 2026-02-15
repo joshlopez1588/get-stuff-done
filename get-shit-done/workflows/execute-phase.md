@@ -74,6 +74,23 @@ Report:
 <step name="execute_waves">
 Execute each wave in sequence. Within a wave: parallel if `PARALLELIZATION=true`, sequential if `false`.
 
+**Team mode detection:**
+
+```bash
+GSD_TOOLS=~/.claude/get-shit-done/bin/gsd-tools.js
+TEAM_ENABLED=$(node "$GSD_TOOLS" config-get team.enabled 2>/dev/null || echo "false")
+```
+
+**If `TEAM_ENABLED` is "true":**
+
+```bash
+TEAM_INIT=$(node "$GSD_TOOLS" init team-execute-phase "${PHASE_NUMBER}")
+TEAM_CONTRACTS=""
+if [ -f ".planning/phases/${PHASE_DIR}/teams/CONTRACTS.md" ]; then
+  TEAM_CONTRACTS=$(cat ".planning/phases/${PHASE_DIR}/teams/CONTRACTS.md")
+fi
+```
+
 **For each wave:**
 
 1. **Describe what's being built (BEFORE spawning):**
@@ -96,7 +113,9 @@ Execute each wave in sequence. Within a wave: parallel if `PARALLELIZATION=true`
 
 2. **Spawn executor agents:**
 
-   Pass paths only — executors read files themselves with their fresh 200k context.
+   ### If team mode is DISABLED (default):
+
+   Pass paths only — executors read files themselves with their fresh 1M token context.
    This keeps orchestrator context lean (~10-15%).
 
    ```
@@ -133,6 +152,75 @@ Execute each wave in sequence. Within a wave: parallel if `PARALLELIZATION=true`
    )
    ```
 
+   ### If team mode is ENABLED:
+
+   For each plan in the wave:
+
+   **a. Read plan frontmatter for team routing:**
+
+   Check plan frontmatter for `team`, `assigned_team`, or `assigned_member` fields. These are set during team planning (Step 8b of plan-phase).
+
+   **b. Resolve team-specific model:**
+
+   ```bash
+   PLAN_TEAM=$(grep "^team:" "${PHASE_DIR}/${PLAN_FILE}" | cut -d: -f2 | tr -d ' ')
+   if [ -n "$PLAN_TEAM" ]; then
+     MODEL=$(node "$GSD_TOOLS" resolve-model gsd-executor --team "${PLAN_TEAM}")
+   else
+     MODEL=$(node "$GSD_TOOLS" resolve-model gsd-executor)
+   fi
+   ```
+
+   **c. Spawn executor with team context:**
+
+   ```
+   Task(
+     subagent_type="gsd-executor",
+     model="${MODEL}",
+     prompt="
+       <objective>
+       Execute plan {plan_number} of phase {phase_number}-{phase_name}.
+       Commit each task atomically. Create SUMMARY.md. Update STATE.md.
+       </objective>
+
+       <team_context>
+       <team>{plan_team}</team>
+       <contracts>
+       {team_contracts from CONTRACTS.md}
+       </contracts>
+       <team_dependencies>
+       Honor interface contracts when implementing. If your work produces outputs
+       consumed by other teams, ensure they match the contract specification exactly.
+       If your work consumes inputs from other teams, validate against contract spec.
+       </team_dependencies>
+       </team_context>
+
+       <execution_context>
+       @~/.claude/get-shit-done/workflows/execute-plan.md
+       @~/.claude/get-shit-done/templates/summary.md
+       @~/.claude/get-shit-done/references/checkpoints.md
+       @~/.claude/get-shit-done/references/tdd.md
+       </execution_context>
+
+       <files_to_read>
+       Read these files at execution start using the Read tool:
+       - Plan: {phase_dir}/{plan_file}
+       - State: .planning/STATE.md
+       - Config: .planning/config.json (if exists)
+       - Contracts: .planning/phases/{phase_dir}/teams/CONTRACTS.md (if exists)
+       </files_to_read>
+
+       <success_criteria>
+       - [ ] All tasks executed
+       - [ ] Each task committed individually
+       - [ ] SUMMARY.md created in plan directory
+       - [ ] STATE.md updated with position and decisions
+       - [ ] Interface contracts honored (inputs validated, outputs match spec)
+       </success_criteria>
+     "
+   )
+   ```
+
 3. **Wait for all agents in wave to complete.**
 
 4. **Report completion — spot-check claims first:**
@@ -159,6 +247,57 @@ Execute each wave in sequence. Within a wave: parallel if `PARALLELIZATION=true`
 
    - Bad: "Wave 2 complete. Proceeding to Wave 3."
    - Good: "Terrain system complete — 3 biome types, height-based texturing, physics collision meshes. Vehicle physics (Wave 3) can now reference ground surfaces."
+
+   ### Team integration check (team mode ENABLED only):
+
+   **After each wave completes (if `TEAM_ENABLED` is "true"):**
+
+   ```bash
+   CONFLICTS=$(node "$GSD_TOOLS" team-conflicts --phase "${PHASE_NUMBER}")
+   ```
+
+   If conflicts detected (e.g., overlapping file modifications, contract violations, incompatible interface implementations):
+
+   ```
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    GSD ► TEAM INTEGRATION CONFLICT — Wave {N}
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   {conflict_summary}
+
+   Spawning coordinator to resolve...
+   ```
+
+   Spawn gsd-team-coordinator to resolve:
+
+   ```
+   Task(
+     subagent_type="gsd-team-coordinator",
+     model="{executor_model}",
+     prompt="
+       <coordination_context>
+       <phase>{phase_number}</phase>
+       <wave>{wave_number}</wave>
+       <conflicts>{conflicts}</conflicts>
+       <contracts>{team_contracts}</contracts>
+       <summaries>
+         Read SUMMARY.md files from completed plans in this wave.
+       </summaries>
+       </coordination_context>
+
+       <instructions>
+       1. Analyze conflicts between team outputs
+       2. Determine which implementation should win (based on contracts)
+       3. Apply fixes to resolve incompatibilities
+       4. Update CONTRACTS.md if contracts need revision
+       5. Commit resolution changes
+       </instructions>
+     ",
+     description="Resolve team conflicts in Wave {wave} of Phase {phase}"
+   )
+   ```
+
+   If no conflicts: display `Team integration check: No conflicts detected.` and continue.
 
 5. **Handle failures:**
 
@@ -229,6 +368,14 @@ After all waves:
 <step name="verify_phase_goal">
 Verify phase achieved its GOAL, not just completed tasks.
 
+**Check team mode:**
+
+```bash
+TEAM_ENABLED=$(node "$GSD_TOOLS" config-get team.enabled 2>/dev/null || echo "false")
+```
+
+### If team mode is DISABLED (default):
+
 ```
 Task(
   prompt="Verify phase {phase_number} goal achievement.
@@ -237,6 +384,44 @@ Phase goal: {goal from ROADMAP.md}
 Check must_haves against actual codebase. Create VERIFICATION.md.",
   subagent_type="gsd-verifier",
   model="{verifier_model}"
+)
+```
+
+### If team mode is ENABLED:
+
+Spawn gsd-team-verifier which performs cross-team verification in addition to standard goal checks:
+
+```
+Task(
+  prompt="
+    <verification_context>
+    <phase>{phase_number}</phase>
+    <phase_dir>{phase_dir}</phase_dir>
+    <phase_goal>{goal from ROADMAP.md}</phase_goal>
+    <team_contracts>
+      Read: .planning/phases/{phase_dir}/teams/CONTRACTS.md
+    </team_contracts>
+    <team_plans>
+      Read all TEAM-PLAN.md files from: .planning/phases/{phase_dir}/teams/*/
+    </team_plans>
+    </verification_context>
+
+    <instructions>
+    1. Standard verification: Check must_haves against actual codebase
+    2. Contract verification: Verify all interface contracts are satisfied
+       - API endpoints match contract specs (request/response shapes)
+       - Shared types are consistent across team boundaries
+       - Data formats match between producer and consumer teams
+    3. Integration verification: Verify cross-team touchpoints work together
+       - Frontend correctly calls backend APIs per contract
+       - Auth middleware integrates with all protected routes
+       - Database schema supports all team requirements
+    4. Create VERIFICATION.md with standard results plus team integration section
+    </instructions>
+  ",
+  subagent_type="gsd-team-verifier",
+  model="{verifier_model}",
+  description="Team-aware verification for Phase {phase}"
 )
 ```
 
@@ -320,7 +505,7 @@ All {N} phases executed.
 </process>
 
 <context_efficiency>
-Orchestrator: ~10-15% context. Subagents: fresh 200k each. No polling (Task blocks). No context bleed.
+Orchestrator: ~10-15% context. Subagents: fresh 1M token context each. No polling (Task blocks). No context bleed.
 </context_efficiency>
 
 <failure_handling>

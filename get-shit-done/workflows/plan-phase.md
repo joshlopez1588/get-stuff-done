@@ -24,6 +24,61 @@ Parse JSON for: `researcher_model`, `planner_model`, `checker_model`, `research_
 
 **If `planning_exists` is false:** Error — run `/gsd:new-project` first.
 
+## 1.5. Team Detection (if team mode enabled)
+
+Check if team mode is active:
+
+```bash
+TEAM_ENABLED=$(node "$GSD_TOOLS" config-get team.enabled 2>/dev/null || echo "false")
+```
+
+**If `TEAM_ENABLED` is "false":** Skip entirely — proceed to Step 2 (all team logic bypassed, solo workflow unchanged).
+
+**If `TEAM_ENABLED` is "true":**
+
+1. **Initialize team planning for this phase:**
+
+```bash
+GSD_TOOLS=~/.claude/get-shit-done/bin/gsd-tools.js
+TEAM_INIT=$(node "$GSD_TOOLS" init team-plan-phase "${PHASE}")
+```
+
+2. **Run team analysis to determine which specialist teams are needed:**
+
+```bash
+TEAM_ANALYSIS=$(node "$GSD_TOOLS" analyze-teams --phase "${PHASE}")
+```
+
+Parse the analysis output. Based on phase content, determine which specialist teams are needed:
+
+| Detected Content | Team Domain | Agent Spawned |
+|-----------------|-------------|---------------|
+| Frontend/UI tasks (components, pages, styling) | `frontend` | gsd-team-planner domain=frontend |
+| Backend/API tasks (endpoints, services, middleware) | `backend` | gsd-team-planner domain=backend |
+| Auth/security requirements (login, permissions, encryption) | `security` | gsd-team-planner domain=security |
+| Infrastructure tasks (deploy, CI/CD, hosting) | `devops` | gsd-team-planner domain=devops |
+| Database/schema tasks (models, migrations, queries) | `data` | gsd-team-planner domain=data |
+
+3. **Create team directories under the phase:**
+
+```bash
+mkdir -p ".planning/phases/${PHASE_DIR}/teams"
+# Create subdirectories for each detected team domain
+for DOMAIN in $DETECTED_DOMAINS; do
+  mkdir -p ".planning/phases/${PHASE_DIR}/teams/${DOMAIN}"
+done
+```
+
+Display banner:
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ GSD ► TEAM MODE ACTIVE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+◆ Teams detected: {list of domain names}
+◆ Team directories created under .planning/phases/{phase}/teams/
+```
+
 ## 2. Parse and Normalize Arguments
 
 Extract from $ARGUMENTS: phase number (integer or decimal like `2.1`), flags (`--research`, `--skip-research`, `--gaps`, `--skip-verify`).
@@ -145,7 +200,17 @@ UAT_CONTENT=$(echo "$INIT" | jq -r '.uat_content // empty')
 CONTEXT_CONTENT=$(echo "$INIT" | jq -r '.context_content // empty')
 ```
 
-## 8. Spawn gsd-planner Agent
+## 8. Plan Creation
+
+Check team mode status (determined in Step 1.5):
+
+```bash
+TEAM_ENABLED=$(node "$GSD_TOOLS" config-get team.enabled 2>/dev/null || echo "false")
+```
+
+### 8a. Solo Planning (team mode DISABLED — default)
+
+**If `TEAM_ENABLED` is "false":**
 
 Display banner:
 ```
@@ -205,6 +270,151 @@ Task(
   description="Plan Phase {phase}"
 )
 ```
+
+### 8b. Team Planning (team mode ENABLED)
+
+**If `TEAM_ENABLED` is "true":**
+
+Display banner:
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ GSD ► TEAM PLANNING PHASE {X}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+◆ Spawning {N} team planners in parallel...
+  → {domain1} team planner
+  → {domain2} team planner
+  → ...
+```
+
+#### Step 1: Load existing contracts (if any)
+
+```bash
+EXISTING_CONTRACTS=""
+if [ -f ".planning/phases/${PHASE_DIR}/teams/CONTRACTS.md" ]; then
+  EXISTING_CONTRACTS=$(cat ".planning/phases/${PHASE_DIR}/teams/CONTRACTS.md")
+fi
+```
+
+#### Step 2: Spawn parallel team planners (one per detected domain)
+
+For each detected team domain from Step 1.5, spawn in parallel:
+
+```
+Task(
+  prompt="<team_context>
+    <domain>{domain}</domain>
+    <phase>
+      <phase_number>{phase_number}</phase_number>
+      <phase_name>{phase_name}</phase_name>
+      <phase_goal>{goal from ROADMAP}</phase_goal>
+    </phase>
+    <requirements>{requirements_content}</requirements>
+    <research>{research_content}</research>
+    <context>
+      IMPORTANT: If context exists below, it contains USER DECISIONS from /gsd:discuss-phase.
+      - Decisions = LOCKED — honor exactly, do not revisit
+      - Claude's Discretion = Freedom — make implementation choices
+      - Deferred Ideas = Out of scope — do NOT include
+
+      {context_content}
+    </context>
+    <contracts>{existing_contracts}</contracts>
+    <project_state>{state_content}</project_state>
+    <roadmap>{roadmap_content}</roadmap>
+  </team_context>
+
+  <output>
+  Write team plan to: .planning/phases/{phase_dir}/teams/{domain}/{phase}-{plan_number}-TEAM-PLAN.md
+  Include in frontmatter: team, domain, wave, depends_on, files_modified, contracts_required
+  </output>
+
+  <quality_gate>
+  - [ ] TEAM-PLAN.md created in team directory
+  - [ ] Frontmatter includes team domain and contract requirements
+  - [ ] Tasks scoped to this team's domain only
+  - [ ] Cross-team dependencies explicitly declared in contracts_required
+  - [ ] Interface contracts defined (API shapes, data formats, shared types)
+  </quality_gate>",
+  subagent_type="gsd-team-planner",
+  model="{team_planner_model}",
+  description="Team Plan: {domain} for Phase {phase}"
+)
+```
+
+#### Step 3: Synthesize team plans
+
+After all team planners complete, spawn team synthesizer to merge plans into unified PLAN.md files:
+
+```
+Task(
+  prompt="<synthesis_context>
+    <phase>
+      <phase_number>{phase_number}</phase_number>
+      <phase_name>{phase_name}</phase_name>
+      <phase_goal>{goal from ROADMAP}</phase_goal>
+    </phase>
+    <team_plans>
+      Read all TEAM-PLAN.md files from: .planning/phases/{phase_dir}/teams/*/
+    </team_plans>
+    <requirements>{requirements_content}</requirements>
+    <research>{research_content}</research>
+    <context>{context_content}</context>
+  </synthesis_context>
+
+  <instructions>
+  1. Read all TEAM-PLAN.md files from each team subdirectory
+  2. Merge into unified PLAN.md files in the phase directory
+  3. Resolve wave ordering across teams (respect inter-team dependencies)
+  4. Generate CONTRACTS.md with interface agreements between teams
+  5. Write SYNTHESIS.md summarizing how team plans were merged
+  </instructions>
+
+  <output>
+  Write to:
+  - .planning/phases/{phase_dir}/*-PLAN.md (unified plans)
+  - .planning/phases/{phase_dir}/teams/CONTRACTS.md (interface contracts)
+  - .planning/phases/{phase_dir}/teams/SYNTHESIS.md (merge summary)
+  </output>",
+  subagent_type="gsd-team-synthesizer",
+  model="{team_synthesizer_model}",
+  description="Synthesize team plans for Phase {phase}"
+)
+```
+
+#### Step 4: Check for cross-team conflicts
+
+```bash
+CONFLICTS=$(node "$GSD_TOOLS" team-conflicts --phase "${PHASE}")
+```
+
+**If conflicts found:**
+
+Write conflicts to `.planning/phases/${PHASE_DIR}/teams/CONFLICTS.md`.
+
+Display:
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ GSD ► TEAM CONFLICTS DETECTED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+{N} conflict(s) found between team plans:
+
+{conflict_summary}
+
+Options:
+1. Auto-resolve — let coordinator handle (Recommended)
+2. Manual review — review CONFLICTS.md and decide
+```
+
+If auto-resolve: Spawn gsd-team-coordinator to resolve conflicts, then re-run synthesis.
+If manual review: Present CONFLICTS.md, get user decisions, update plans accordingly.
+
+**If no conflicts:** Display confirmation and continue.
+
+#### Step 5: Proceed to plan-checker (Step 10) with synthesized PLAN.md files
+
+The plan-checker receives the unified PLAN.md files (same as solo mode). Team provenance is preserved in plan frontmatter (`team` field) for downstream execution routing.
 
 ## 9. Handle Planner Return
 

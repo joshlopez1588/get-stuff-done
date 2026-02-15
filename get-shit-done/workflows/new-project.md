@@ -596,6 +596,87 @@ Display research complete banner and key findings:
 Files: `.planning/research/`
 ```
 
+### 6.5. Team Capability Analysis (if team mode enabled)
+
+```bash
+GSD_TOOLS=~/.claude/get-shit-done/bin/gsd-tools.js
+TEAM_ENABLED=$(node "$GSD_TOOLS" config-get team.enabled 2>/dev/null || echo "false")
+```
+
+**If `TEAM_ENABLED` is "false":** Skip entirely — proceed to Step 7.
+
+**If `TEAM_ENABLED` is "true":**
+
+1. **Analyze SUMMARY.md to determine which teams are needed per suggested phase:**
+
+   Read `.planning/research/SUMMARY.md` and cross-reference with FEATURES.md and ARCHITECTURE.md to identify domain boundaries:
+
+   - **Frontend:** UI components, pages, layouts, client-side state, styling
+   - **Backend:** API endpoints, services, business logic, middleware
+   - **Security:** Authentication, authorization, encryption, rate limiting
+   - **DevOps:** Deployment, CI/CD, hosting, monitoring, infrastructure
+   - **Data:** Database schema, migrations, queries, data modeling, caching
+
+2. **Generate team matrix:**
+
+   ```bash
+   TEAM_MATRIX=$(node "$GSD_TOOLS" team-matrix)
+   ```
+
+   Create `.planning/TEAM-MATRIX.md`:
+
+   ```markdown
+   # Team Matrix
+
+   Generated from research analysis. Shows which specialist teams are needed per phase.
+
+   | Phase | Frontend | Backend | Security | DevOps | Data |
+   |-------|----------|---------|----------|--------|------|
+   | 1     | ●        | ●       |          |        | ●    |
+   | 2     |          | ●       | ●        |        | ●    |
+   | 3     | ●        | ●       |          |        |      |
+   | ...   |          |         |          |        |      |
+
+   **Legend:** ● = team actively needed for this phase
+
+   ## Team Scope Notes
+
+   ### Frontend
+   [Summary of what the frontend team owns across phases]
+
+   ### Backend
+   [Summary of what the backend team owns across phases]
+
+   ### Security
+   [Summary of security concerns per relevant phase]
+
+   ### DevOps
+   [Summary of infrastructure needs per relevant phase]
+
+   ### Data
+   [Summary of data/schema work per relevant phase]
+   ```
+
+   Commit:
+   ```bash
+   node "$GSD_TOOLS" commit "docs: create team capability matrix" --files .planning/TEAM-MATRIX.md
+   ```
+
+3. **Pass TEAM-MATRIX.md to roadmapper** so phases include team annotations:
+
+   The roadmapper (Step 8) will receive TEAM-MATRIX.md as additional context. Each phase in ROADMAP.md will include a `teams:` field in its metadata listing which teams are active for that phase. This enables `/gsd:plan-phase` to pre-determine team composition without re-analysis.
+
+Display:
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ GSD ► TEAM MATRIX CREATED ✓
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+{N} teams identified across {M} phases
+
+File: .planning/TEAM-MATRIX.md
+```
+
 **If "Skip research":** Continue to Step 7.
 
 ## 7. Define Requirements
@@ -772,6 +853,9 @@ Task(prompt="
 **Config:**
 @.planning/config.json
 
+**Team Matrix (if team mode enabled and file exists):**
+@.planning/TEAM-MATRIX.md
+
 </planning_context>
 
 <instructions>
@@ -780,8 +864,9 @@ Create roadmap:
 2. Map every v1 requirement to exactly one phase
 3. Derive 2-5 success criteria per phase (observable user behaviors)
 4. Validate 100% coverage
-5. Write files immediately (ROADMAP.md, STATE.md, update REQUIREMENTS.md traceability)
-6. Return ROADMAP CREATED with summary
+5. If TEAM-MATRIX.md exists: annotate each phase with `teams:` field listing active teams for that phase (e.g., teams: [frontend, backend, data]). This enables downstream team-aware planning and execution.
+6. Write files immediately (ROADMAP.md, STATE.md, update REQUIREMENTS.md traceability)
+7. Return ROADMAP CREATED with summary
 
 Write files first, then return. This ensures artifacts persist even if context is lost.
 </instructions>

@@ -1,46 +1,117 @@
 <div align="center">
 
-# GET SHIT DONE
+# GET SHIT DONE — Agent Teams Edition
 
-**A light-weight and powerful meta-prompting, context engineering and spec-driven development system for Claude Code, OpenCode, and Gemini CLI.**
+**A fork of [glittercowboy/get-shit-done](https://github.com/glittercowboy/get-shit-done) with multi-agent team support.**
 
-**Solves context rot — the quality degradation that happens as Claude fills its context window.**
+**The original GSD solves context rot. This fork adds domain-specialized agent teams that parallelize planning and execution across 14 domains.**
 
-[![npm version](https://img.shields.io/npm/v/get-shit-done-cc?style=for-the-badge&logo=npm&logoColor=white&color=CB3837)](https://www.npmjs.com/package/get-shit-done-cc)
-[![npm downloads](https://img.shields.io/npm/dm/get-shit-done-cc?style=for-the-badge&logo=npm&logoColor=white&color=CB3837)](https://www.npmjs.com/package/get-shit-done-cc)
-[![Discord](https://img.shields.io/badge/Discord-Join-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/5JJgD5svVS)
-[![X (Twitter)](https://img.shields.io/badge/X-@gsd__foundation-000000?style=for-the-badge&logo=x&logoColor=white)](https://x.com/gsd_foundation)
-[![$GSD Token](https://img.shields.io/badge/$GSD-Dexscreener-1C1C1C?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIxMCIgZmlsbD0iIzAwRkYwMCIvPjwvc3ZnPg==&logoColor=00FF00)](https://dexscreener.com/solana/dwudwjvan7bzkw9zwlbyv6kspdlvhwzrqy6ebk8xzxkv)
-[![GitHub stars](https://img.shields.io/github/stars/glittercowboy/get-shit-done?style=for-the-badge&logo=github&color=181717)](https://github.com/glittercowboy/get-shit-done)
+[![Forked from](https://img.shields.io/badge/forked_from-glittercowboy%2Fget--shit--done-blue?style=for-the-badge&logo=github)](https://github.com/glittercowboy/get-shit-done)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)](LICENSE)
 
 <br>
 
-```bash
-npx get-shit-done-cc@latest
-```
-
-**Works on Mac, Windows, and Linux.**
-
-<br>
-
-![GSD Install](assets/terminal.svg)
-
-<br>
-
-*"If you know clearly what you want, this WILL build it for you. No bs."*
-
-*"I've done SpecKit, OpenSpec and Taskmaster — this has produced the best results for me."*
-
-*"By far the most powerful addition to my Claude Code. Nothing over-engineered. Literally just gets shit done."*
-
-<br>
-
-**Trusted by engineers at Amazon, Google, Shopify, and Webflow.**
-
-[Why I Built This](#why-i-built-this) · [How It Works](#how-it-works) · [Commands](#commands) · [Why It Works](#why-it-works)
+> **This is an enhancement fork.** The original GSD by [TACHES](https://github.com/glittercowboy) is an incredible system. This fork extends it with agent teams — domain-specialized planners and executors that work in parallel, each with their own 1M token context window. All team features are opt-in and backward-compatible.
 
 </div>
+
+---
+
+## What This Fork Adds
+
+### Agent Teams Architecture
+
+The original GSD uses a single planner and executor per phase. This works great for small-to-medium projects. But for larger projects with cross-cutting concerns (frontend, backend, security, DevOps, testing, etc.), a single agent trying to plan everything hits diminishing returns.
+
+**Agent Teams** solves this by decomposing phases into domain-specific slices:
+
+```
+Original GSD:                    Agent Teams:
+
+  Phase 3                          Phase 3
+    │                                │
+    ▼                                ├── Frontend Planner ──► Frontend Executor
+  Planner ──► Executor              ├── Backend Planner  ──► Backend Executor
+    │             │                  ├── Security Planner ──► Security Executor
+    ▼             ▼                  ├── Testing Planner  ──► Testing Executor
+  PLAN.md    SUMMARY.md             │       ...
+                                    ▼
+                                  Synthesizer ──► PLAN.md ──► Wave Execution
+```
+
+Each domain planner gets fresh context with deep domain expertise. A synthesizer merges fragments into unified plans. Execution respects cross-team dependencies through wave ordering.
+
+### 14 Domain Specialists
+
+| Domain | Planner | Executor | Expertise |
+|--------|---------|----------|-----------|
+| Frontend | gsd-planner-frontend | gsd-executor (routed) | Components, state, routing, styling, responsive |
+| Backend | gsd-planner-backend | gsd-executor (routed) | APIs, databases, auth, business logic |
+| Security | gsd-planner-security | gsd-executor (routed) | Auth, OWASP, encryption, RBAC |
+| DevOps | gsd-planner-devops | gsd-executor (routed) | CI/CD, Docker, infrastructure, deployment |
+| Data | gsd-planner-data | gsd-executor (routed) | Schema, migrations, ORM, indexing |
+| Testing | gsd-planner-testing | gsd-executor-testing | Test pyramid, coverage, E2E, fixtures |
+| Performance | gsd-planner-performance | gsd-executor-performance | Profiling, optimization, caching, Web Vitals |
+| Accessibility | gsd-planner-accessibility | gsd-executor-accessibility | WCAG, ARIA, keyboard nav, screen readers |
+| API Design | gsd-planner-api-design | gsd-executor-api-design | REST/GraphQL, versioning, pagination, OpenAPI |
+| Observability | gsd-planner-observability | gsd-executor-observability | Logging, metrics, tracing, alerting, SLOs |
+| AI/ML | gsd-planner-ai-ml | gsd-executor-ai-ml | LLM integration, RAG, embeddings, fine-tuning |
+| Mobile | gsd-planner-mobile | gsd-executor-mobile | PWA, React Native, touch, offline, push |
+| Documentation | gsd-planner-documentation | gsd-executor-documentation | API docs, guides, ADRs, Docusaurus |
+| i18n | gsd-planner-i18n | gsd-executor-i18n | Localization, RTL, date/number formatting |
+
+### 4 Generic Team Agents
+
+| Agent | Role |
+|-------|------|
+| **gsd-team-planner** | Orchestrates domain planners, slices phases by concern |
+| **gsd-team-synthesizer** | Merges TEAM-PLAN.md fragments into unified PLAN.md, generates CONTRACTS.md |
+| **gsd-team-coordinator** | Manages cross-team dependencies, resolves conflicts during execution |
+| **gsd-team-verifier** | Cross-domain verification, contract compliance checking |
+
+### 5 New Commands
+
+| Command | What it does |
+|---------|--------------|
+| `/gsd:team-init` | Enable teams and configure domain roster for your project |
+| `/gsd:distribute-phase [N]` | Distribute a phase across domain teams |
+| `/gsd:team-status [N]` | Show team progress, assignments, and blocking dependencies |
+| `/gsd:team-handoff` | Manage handoffs and unblock waiting teams |
+| `/gsd:resolve-conflict` | Detect and resolve cross-team conflicts |
+
+### Team-Enhanced Existing Commands
+
+| Command | Team Enhancement |
+|---------|-----------------|
+| `/gsd:plan-phase [N] --teams` | Route planning through domain-specialized planners |
+| `/gsd:execute-phase [N] --team <name>` | Execute only a specific team's plans |
+| `/gsd:verify-work [N] --team <name>` | Verify a specific team's deliverables |
+
+### Backward Compatible
+
+All team features are gated behind `team.enabled` in `.planning/config.json` (defaults to `false`). The original GSD workflow is completely unchanged unless you opt in:
+
+```bash
+/gsd:team-init    # Enable teams and choose which domains
+```
+
+### New Templates and References
+
+| File | Purpose |
+|------|---------|
+| `templates/team-plan.md` | TEAM-PLAN.md fragment template |
+| `templates/team-contract.md` | Cross-team interface contract template |
+| `templates/team-matrix.md` | Team capability matrix template |
+| `references/team-orchestration.md` | Multi-team orchestration patterns |
+| `references/team-handoff-protocol.md` | Handoff and dependency management |
+| `references/team-state-format.md` | Team state tracking format |
+| `references/team-model-profiles.md` | Per-team model configuration guide |
+
+---
+
+## Original README
+
+> Everything below is from the original [GET SHIT DONE](https://github.com/glittercowboy/get-shit-done) project by TACHES.
 
 ---
 
@@ -254,7 +325,7 @@ Each plan is small enough to execute in a fresh context window. No degradation, 
 The system:
 
 1. **Runs plans in waves** — Parallel where possible, sequential when dependent
-2. **Fresh context per plan** — 200k tokens purely for implementation, zero accumulated garbage
+2. **Fresh context per plan** — 1M tokens purely for implementation, zero accumulated garbage
 3. **Commits per task** — Every task gets its own atomic commit
 4. **Verifies against goals** — Checks the codebase delivers what the phase promised
 
@@ -383,7 +454,7 @@ Every stage uses the same pattern: a thin orchestrator spawns specialized agents
 |-------|------------------|-----------|
 | Research | Coordinates, presents findings | 4 parallel researchers investigate stack, features, architecture, pitfalls |
 | Planning | Validates, manages iteration | Planner creates plans, checker verifies, loop until pass |
-| Execution | Groups into waves, tracks progress | Executors implement in parallel, each with fresh 200k context |
+| Execution | Groups into waves, tracks progress | Executors implement in parallel, each with fresh 1M context |
 | Verification | Presents results, routes next | Verifier checks codebase against goals, debuggers diagnose failures |
 
 The orchestrator never does heavy lifting. It spawns agents, waits, integrates results.

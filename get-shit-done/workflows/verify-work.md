@@ -325,6 +325,15 @@ All tests passed. Ready to continue.
 <step name="diagnose_issues">
 **Diagnose root causes before planning fixes:**
 
+**Check team mode:**
+
+```bash
+GSD_TOOLS=~/.claude/get-shit-done/bin/gsd-tools.js
+TEAM_ENABLED=$(node "$GSD_TOOLS" config-get team.enabled 2>/dev/null || echo "false")
+```
+
+### If team mode is DISABLED (default):
+
 ```
 ---
 
@@ -341,6 +350,110 @@ Spawning parallel debug agents to investigate each issue.
 - Proceed to `plan_gap_closure`
 
 Diagnosis runs automatically - no user prompt. Parallel agents investigate simultaneously, so overhead is minimal and fixes are more accurate.
+
+### If team mode is ENABLED:
+
+```
+---
+
+{N} issues found. Analyzing issue categories for team routing...
+
+Routing diagnosis to specialist team debuggers.
+```
+
+For each gap/issue from the UAT:
+
+**1. Analyze issue category:**
+
+Classify each issue based on its description, the test that failed, and the code area involved:
+
+| Issue Category | Team | Routing |
+|---------------|------|---------|
+| Authentication, permissions, encryption, session | Security | security team debugger |
+| UI components, layout, styling, client-side behavior | Frontend | frontend team debugger |
+| API endpoints, services, middleware, business logic | Backend | backend team debugger |
+| Database queries, schema, data integrity, migrations | Data | data team debugger |
+| Deployment, CI/CD, environment, infrastructure | DevOps | devops team debugger |
+| Cross-cutting or unclear | Default | standard debugger (diagnose-issues.md) |
+
+**2. Spawn team-routed debug agents in parallel:**
+
+For each issue, resolve the appropriate team model and spawn:
+
+```bash
+ISSUE_TEAM="{classified_team}"
+DEBUG_MODEL=$(node "$GSD_TOOLS" resolve-model gsd-debugger --team "${ISSUE_TEAM}" 2>/dev/null)
+if [ -z "$DEBUG_MODEL" ]; then
+  DEBUG_MODEL=$(node "$GSD_TOOLS" resolve-model gsd-debugger)
+fi
+```
+
+```
+Task(
+  prompt="
+    <debug_context>
+    <team>{issue_team}</team>
+    <issue>
+      <test_name>{test_name}</test_name>
+      <expected>{expected_behavior}</expected>
+      <reported>{user_reported_issue}</reported>
+      <severity>{inferred_severity}</severity>
+    </issue>
+    <contracts>
+      Read: .planning/phases/{phase_dir}/teams/CONTRACTS.md (if exists)
+    </contracts>
+    </debug_context>
+
+    <instructions>
+    Follow @~/.claude/get-shit-done/workflows/diagnose-issues.md
+
+    As a {issue_team} team specialist:
+    1. Focus diagnosis on {issue_team}-domain code and patterns
+    2. Check if the issue is caused by a contract violation between teams
+    3. If root cause is in another team's domain, note the cross-team dependency
+    4. Provide root cause and recommended fix scoped to the appropriate team
+    </instructions>
+  ",
+  subagent_type="general-purpose",
+  model="${DEBUG_MODEL}",
+  description="Diagnose {issue_team} issue: {test_name}"
+)
+```
+
+**3. Route gap-closure planning to appropriate team planner:**
+
+After diagnosis, each gap's root cause includes a `team` field. When `plan_gap_closure` spawns the planner, gaps are grouped by team so the planner can assign fix plans to the correct team domain.
+
+**4. Cross-team gap check:**
+
+After all debug agents complete, verify that proposed fixes do not break other teams' work:
+
+```bash
+TEAM_DEPS=$(node "$GSD_TOOLS" team-dependencies)
+```
+
+For each diagnosed fix:
+- Check if the fix modifies files owned by another team
+- Check if the fix changes an interface defined in CONTRACTS.md
+- If cross-team impact detected: flag for coordinator review before proceeding
+
+```
+If cross-team impacts found:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ GSD ► CROSS-TEAM IMPACT DETECTED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+{N} fix(es) affect other teams' code or contracts:
+
+{impact_summary}
+
+These will be coordinated during gap closure execution.
+```
+
+- Collect root causes (with team annotations)
+- Update UAT.md with root causes and team assignments
+- Proceed to `plan_gap_closure`
 </step>
 
 <step name="plan_gap_closure">
@@ -354,6 +467,8 @@ Display:
 
 ◆ Spawning planner for gap closure...
 ```
+
+### If team mode is DISABLED (default):
 
 Spawn gsd-planner in --gaps mode:
 
@@ -384,6 +499,52 @@ Plans must be executable prompts.
   subagent_type="gsd-planner",
   model="{planner_model}",
   description="Plan gap fixes for Phase {phase}"
+)
+```
+
+### If team mode is ENABLED:
+
+Spawn gsd-planner in --gaps mode with team context, so fix plans are assigned to the correct teams:
+
+```
+Task(
+  prompt="""
+<planning_context>
+
+**Phase:** {phase_number}
+**Mode:** gap_closure
+
+**UAT with diagnoses (includes team annotations per gap):**
+@.planning/phases/{phase_dir}/{phase}-UAT.md
+
+**Project State:**
+@.planning/STATE.md
+
+**Roadmap:**
+@.planning/ROADMAP.md
+
+**Team Contracts:**
+@.planning/phases/{phase_dir}/teams/CONTRACTS.md
+
+</planning_context>
+
+<team_instructions>
+Each diagnosed gap includes a `team` field identifying which team owns the fix.
+When creating fix plans:
+1. Set the `team` field in plan frontmatter to match the diagnosed team
+2. If a fix requires changes across multiple teams, create separate plans per team
+3. If a fix requires updating a contract (CONTRACTS.md), include a contract update task
+4. Set wave ordering so dependent fixes execute after their prerequisites
+</team_instructions>
+
+<downstream_consumer>
+Output consumed by /gsd:execute-phase (team-aware mode)
+Plans must be executable prompts with team routing metadata.
+</downstream_consumer>
+""",
+  subagent_type="gsd-planner",
+  model="{planner_model}",
+  description="Plan team-aware gap fixes for Phase {phase}"
 )
 ```
 

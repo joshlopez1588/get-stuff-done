@@ -134,6 +134,35 @@ const MODEL_PROFILES = {
   'gsd-verifier':             { quality: 'sonnet', balanced: 'sonnet', budget: 'haiku' },
   'gsd-plan-checker':         { quality: 'sonnet', balanced: 'sonnet', budget: 'haiku' },
   'gsd-integration-checker':  { quality: 'sonnet', balanced: 'sonnet', budget: 'haiku' },
+  'gsd-team-planner':         { quality: 'opus', balanced: 'opus',   budget: 'sonnet' },
+  'gsd-team-coordinator':     { quality: 'opus', balanced: 'opus',   budget: 'sonnet' },
+  'gsd-team-verifier':        { quality: 'opus', balanced: 'sonnet', budget: 'haiku' },
+  'gsd-team-synthesizer':     { quality: 'opus', balanced: 'opus',   budget: 'sonnet' },
+  // Domain-specific planner agents (teams)
+  'gsd-planner-frontend':     { quality: 'opus', balanced: 'opus',   budget: 'sonnet' },
+  'gsd-planner-backend':      { quality: 'opus', balanced: 'opus',   budget: 'sonnet' },
+  'gsd-planner-security':     { quality: 'opus', balanced: 'opus',   budget: 'sonnet' },
+  'gsd-planner-devops':       { quality: 'opus', balanced: 'opus',   budget: 'sonnet' },
+  'gsd-planner-data':         { quality: 'opus', balanced: 'opus',   budget: 'sonnet' },
+  'gsd-planner-testing':      { quality: 'opus', balanced: 'opus',   budget: 'sonnet' },
+  'gsd-planner-performance':  { quality: 'opus', balanced: 'opus',   budget: 'sonnet' },
+  'gsd-planner-accessibility': { quality: 'opus', balanced: 'opus',  budget: 'sonnet' },
+  'gsd-planner-api-design':   { quality: 'opus', balanced: 'opus',   budget: 'sonnet' },
+  'gsd-planner-observability': { quality: 'opus', balanced: 'opus',  budget: 'sonnet' },
+  'gsd-planner-ai-ml':        { quality: 'opus', balanced: 'opus',   budget: 'sonnet' },
+  'gsd-planner-mobile':       { quality: 'opus', balanced: 'opus',   budget: 'sonnet' },
+  'gsd-planner-documentation': { quality: 'opus', balanced: 'sonnet', budget: 'haiku' },
+  'gsd-planner-i18n':         { quality: 'opus', balanced: 'opus',   budget: 'sonnet' },
+  // Domain-specific executor agents (teams)
+  'gsd-executor-testing':     { quality: 'opus', balanced: 'sonnet', budget: 'sonnet' },
+  'gsd-executor-performance': { quality: 'opus', balanced: 'sonnet', budget: 'sonnet' },
+  'gsd-executor-accessibility': { quality: 'opus', balanced: 'sonnet', budget: 'sonnet' },
+  'gsd-executor-api-design':  { quality: 'opus', balanced: 'sonnet', budget: 'sonnet' },
+  'gsd-executor-observability': { quality: 'opus', balanced: 'sonnet', budget: 'sonnet' },
+  'gsd-executor-ai-ml':       { quality: 'opus', balanced: 'sonnet', budget: 'sonnet' },
+  'gsd-executor-mobile':      { quality: 'opus', balanced: 'sonnet', budget: 'sonnet' },
+  'gsd-executor-documentation': { quality: 'sonnet', balanced: 'sonnet', budget: 'haiku' },
+  'gsd-executor-i18n':        { quality: 'opus', balanced: 'sonnet', budget: 'sonnet' },
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -201,6 +230,7 @@ function loadConfig(cwd) {
       verifier: get('verifier', { section: 'workflow', field: 'verifier' }) ?? defaults.verifier,
       parallelization,
       brave_search: get('brave_search') ?? defaults.brave_search,
+      team: parsed.team || null,
     };
   } catch {
     return defaults;
@@ -1313,7 +1343,7 @@ function cmdStateRecordSession(cwd, options, raw) {
   }
 }
 
-function cmdResolveModel(cwd, agentType, raw) {
+function cmdResolveModel(cwd, agentType, raw, team) {
   if (!agentType) {
     error('agent-type required');
   }
@@ -1328,8 +1358,18 @@ function cmdResolveModel(cwd, agentType, raw) {
     return;
   }
 
-  const model = agentModels[profile] || agentModels['balanced'] || 'sonnet';
-  const result = { model, profile };
+  let model = agentModels[profile] || agentModels['balanced'] || 'sonnet';
+
+  // If team is specified, check for team-specific model overrides in config
+  const teamOverrides = config.team?.model_overrides;
+  if (team && teamOverrides && teamOverrides[team]) {
+    const agentRole = agentType.replace('gsd-', '').replace('team-', '');
+    if (teamOverrides[team][agentRole]) {
+      model = teamOverrides[team][agentRole];
+    }
+  }
+
+  const result = { model, profile, ...(team ? { team } : {}) };
   output(result, raw, model);
 }
 
@@ -1773,6 +1813,7 @@ function cmdPhasePlanIndex(cwd, phase, raw) {
 
   const plans = [];
   const waves = {};
+  const teams = {};
   const incomplete = [];
   let hasCheckpoints = false;
 
@@ -1810,6 +1851,8 @@ function cmdPhasePlanIndex(cwd, phase, raw) {
       incomplete.push(planId);
     }
 
+    const planTeam = fm.team || fm.assigned_team || null;
+
     const plan = {
       id: planId,
       wave,
@@ -1818,6 +1861,11 @@ function cmdPhasePlanIndex(cwd, phase, raw) {
       files_modified: filesModified,
       task_count: taskCount,
       has_summary: hasSummary,
+      team: fm.team || null,
+      assigned_team: fm.assigned_team || null,
+      assigned_member: fm.assigned_member || null,
+      coordination_cost: fm.coordination_cost || 'none',
+      team_dependencies: fm.team_dependencies || [],
     };
 
     plans.push(plan);
@@ -1828,12 +1876,21 @@ function cmdPhasePlanIndex(cwd, phase, raw) {
       waves[waveKey] = [];
     }
     waves[waveKey].push(planId);
+
+    // Group by team
+    if (planTeam) {
+      if (!teams[planTeam]) {
+        teams[planTeam] = [];
+      }
+      teams[planTeam].push(planId);
+    }
   }
 
   const result = {
     phase: normalized,
     plans,
     waves,
+    teams,
     incomplete,
     has_checkpoints: hasCheckpoints,
   };
@@ -3474,12 +3531,23 @@ function cmdScaffold(cwd, type, options, raw) {
 
 // ─── Compound Commands ────────────────────────────────────────────────────────
 
-function resolveModelInternal(cwd, agentType) {
+function resolveModelInternal(cwd, agentType, team) {
   const config = loadConfig(cwd);
   const profile = config.model_profile || 'balanced';
   const agentModels = MODEL_PROFILES[agentType];
   if (!agentModels) return 'sonnet';
-  return agentModels[profile] || agentModels['balanced'] || 'sonnet';
+  let model = agentModels[profile] || agentModels['balanced'] || 'sonnet';
+
+  // If team is specified, check for team-specific model overrides in config
+  const teamOverrides = config.team?.model_overrides;
+  if (team && teamOverrides && teamOverrides[team]) {
+    const agentRole = agentType.replace('gsd-', '').replace('team-', '');
+    if (teamOverrides[team][agentRole]) {
+      model = teamOverrides[team][agentRole];
+    }
+  }
+
+  return model;
 }
 
 function findPhaseInternal(cwd, phase) {
@@ -4209,6 +4277,898 @@ function cmdInitProgress(cwd, includes, raw) {
   output(result, raw);
 }
 
+// ─── Team Helpers ──────────────────────────────────────────────────────────────
+
+function loadTeamConfig(cwd) {
+  const config = loadConfig(cwd);
+  const defaults = {
+    enabled: false,
+    mode: 'solo',
+    auto_detect: true,
+    available_teams: ['frontend', 'backend', 'security', 'devops', 'data'],
+    model_overrides: {},
+  };
+  if (!config.team) return defaults;
+  return {
+    enabled: config.team.enabled ?? defaults.enabled,
+    mode: config.team.mode ?? defaults.mode,
+    auto_detect: config.team.auto_detect ?? defaults.auto_detect,
+    available_teams: config.team.available_teams ?? defaults.available_teams,
+    model_overrides: config.team.model_overrides ?? defaults.model_overrides,
+  };
+}
+
+function listAllPhases(cwd) {
+  const phasesDir = path.join(cwd, '.planning', 'phases');
+  try {
+    const entries = fs.readdirSync(phasesDir, { withFileTypes: true });
+    return entries.filter(e => e.isDirectory()).map(e => e.name).sort();
+  } catch {
+    return [];
+  }
+}
+
+function getTeamsFromPhase(cwd, phase) {
+  const phaseInfo = findPhaseInternal(cwd, phase);
+  if (!phaseInfo || !phaseInfo.found) return {};
+
+  const phaseDir = path.join(cwd, phaseInfo.directory);
+  const planFiles = phaseInfo.plans || [];
+  const teamMap = {};
+
+  for (const planFile of planFiles) {
+    const planId = planFile.replace('-PLAN.md', '').replace('PLAN.md', '');
+    const planPath = path.join(phaseDir, planFile);
+    const content = safeReadFile(planPath);
+    if (!content) continue;
+
+    const fm = extractFrontmatter(content);
+    const teamId = fm.team || fm.assigned_team || null;
+    if (teamId) {
+      if (!teamMap[teamId]) {
+        teamMap[teamId] = [];
+      }
+      teamMap[teamId].push(planId);
+    }
+  }
+
+  return teamMap;
+}
+
+function parseTeamDepsFromYaml(content) {
+  // Custom parser for team_dependencies which are arrays of objects.
+  // extractFrontmatter can't fully handle nested array-of-objects, so we parse the
+  // raw YAML block directly for this specific field.
+  const fmMatch = content.match(/^---\n([\s\S]+?)\n---/);
+  if (!fmMatch) return [];
+
+  const yaml = fmMatch[1];
+  const lines = yaml.split('\n');
+  const deps = [];
+
+  let inTeamDeps = false;
+  let baseIndent = -1;
+  let currentDep = null;
+
+  for (const line of lines) {
+    if (line.trim() === '') continue;
+
+    const indentMatch = line.match(/^(\s*)/);
+    const indent = indentMatch ? indentMatch[1].length : 0;
+
+    // Detect start of team_dependencies block
+    if (line.match(/^team_dependencies:\s*$/)) {
+      inTeamDeps = true;
+      baseIndent = indent;
+      continue;
+    }
+
+    if (!inTeamDeps) continue;
+
+    // Stop if we hit a line at the same or lower indent as the key itself
+    if (indent <= baseIndent && line.trim() !== '') {
+      break;
+    }
+
+    // Array item start: "  - team: value" or "  - "
+    const arrayItemMatch = line.match(/^(\s+)-\s+(.*)/);
+    if (arrayItemMatch) {
+      if (currentDep) deps.push(currentDep);
+      currentDep = {};
+
+      const rest = arrayItemMatch[2].trim();
+      if (rest) {
+        const kvMatch = rest.match(/^([a-zA-Z0-9_-]+):\s*(.*)/);
+        if (kvMatch) {
+          currentDep[kvMatch[1]] = kvMatch[2].replace(/^["']|["']$/g, '').trim();
+        }
+      }
+      continue;
+    }
+
+    // Continuation key-value inside array item
+    if (currentDep && indent > baseIndent + 2) {
+      const kvMatch = line.match(/^\s+([a-zA-Z0-9_-]+):\s*(.*)/);
+      if (kvMatch) {
+        currentDep[kvMatch[1]] = kvMatch[2].replace(/^["']|["']$/g, '').trim();
+      }
+    }
+  }
+
+  if (currentDep) deps.push(currentDep);
+  return deps;
+}
+
+function getTeamDependencies(cwd, phase) {
+  const phaseInfo = findPhaseInternal(cwd, phase);
+  if (!phaseInfo || !phaseInfo.found) return {};
+
+  const phaseDir = path.join(cwd, phaseInfo.directory);
+  const planFiles = phaseInfo.plans || [];
+  const graph = {};
+
+  for (const planFile of planFiles) {
+    const planPath = path.join(phaseDir, planFile);
+    const content = safeReadFile(planPath);
+    if (!content) continue;
+
+    const fm = extractFrontmatter(content);
+    const fromTeam = fm.team || fm.assigned_team || null;
+    if (!fromTeam) continue;
+
+    // Use custom parser for team_dependencies (array-of-objects)
+    const deps = parseTeamDepsFromYaml(content);
+    if (deps.length === 0) continue;
+
+    if (!graph[fromTeam]) {
+      graph[fromTeam] = [];
+    }
+
+    for (const dep of deps) {
+      if (typeof dep === 'object' && dep !== null) {
+        graph[fromTeam].push({
+          to_team: dep.team || null,
+          artifact: dep.artifact || null,
+          ready_by: dep.ready_by || dep['ready_by'] || null,
+        });
+      } else if (typeof dep === 'string') {
+        // Simple string dependency: "team:artifact" or just "team"
+        const parts = dep.split(':');
+        graph[fromTeam].push({
+          to_team: parts[0].trim(),
+          artifact: parts[1] ? parts[1].trim() : null,
+          ready_by: null,
+        });
+      }
+    }
+  }
+
+  return graph;
+}
+
+function detectTeamConflicts(cwd, phase) {
+  const phaseInfo = findPhaseInternal(cwd, phase);
+  if (!phaseInfo || !phaseInfo.found) return [];
+
+  const phaseDir = path.join(cwd, phaseInfo.directory);
+  const planFiles = phaseInfo.plans || [];
+  const conflicts = [];
+  const teamConfig = loadTeamConfig(cwd);
+
+  // Track files-modified per team for overlap detection
+  const filesByTeam = {};
+  // Track plans without team assignments
+  const unassignedPlans = [];
+
+  for (const planFile of planFiles) {
+    const planId = planFile.replace('-PLAN.md', '').replace('PLAN.md', '');
+    const planPath = path.join(phaseDir, planFile);
+    const content = safeReadFile(planPath);
+    if (!content) continue;
+
+    const fm = extractFrontmatter(content);
+    const teamId = fm.team || fm.assigned_team || null;
+
+    if (!teamId && teamConfig.enabled) {
+      unassignedPlans.push(planId);
+    }
+
+    if (teamId) {
+      let filesModified = [];
+      if (fm['files-modified']) {
+        filesModified = Array.isArray(fm['files-modified']) ? fm['files-modified'] : [fm['files-modified']];
+      }
+      if (!filesByTeam[teamId]) {
+        filesByTeam[teamId] = {};
+      }
+      for (const file of filesModified) {
+        if (!filesByTeam[teamId][file]) {
+          filesByTeam[teamId][file] = [];
+        }
+        filesByTeam[teamId][file].push(planId);
+      }
+    }
+  }
+
+  // Detect same file modified by multiple teams
+  const allFiles = {};
+  for (const [teamId, files] of Object.entries(filesByTeam)) {
+    for (const file of Object.keys(files)) {
+      if (!allFiles[file]) {
+        allFiles[file] = [];
+      }
+      allFiles[file].push({ team: teamId, plans: files[file] });
+    }
+  }
+
+  for (const [file, teamEntries] of Object.entries(allFiles)) {
+    if (teamEntries.length > 1) {
+      const teamNames = teamEntries.map(e => e.team);
+      conflicts.push({
+        type: 'file_overlap',
+        severity: 'blocker',
+        file,
+        teams: teamNames,
+        plans: teamEntries.flatMap(e => e.plans),
+        message: `File "${file}" is modified by multiple teams: ${teamNames.join(', ')}`,
+      });
+    }
+  }
+
+  // Detect circular team dependencies
+  const depGraph = getTeamDependencies(cwd, phase);
+  const visited = new Set();
+  const inStack = new Set();
+
+  function detectCycle(node, pathSoFar) {
+    if (inStack.has(node)) {
+      const cycleStart = pathSoFar.indexOf(node);
+      const cycle = pathSoFar.slice(cycleStart).concat(node);
+      conflicts.push({
+        type: 'circular_dependency',
+        severity: 'blocker',
+        teams: cycle,
+        message: `Circular team dependency detected: ${cycle.join(' -> ')}`,
+      });
+      return;
+    }
+    if (visited.has(node)) return;
+
+    visited.add(node);
+    inStack.add(node);
+
+    const deps = depGraph[node] || [];
+    for (const dep of deps) {
+      if (dep.to_team) {
+        detectCycle(dep.to_team, [...pathSoFar, node]);
+      }
+    }
+
+    inStack.delete(node);
+  }
+
+  for (const team of Object.keys(depGraph)) {
+    detectCycle(team, []);
+  }
+
+  // Detect unassigned plans when team mode is enabled
+  for (const planId of unassignedPlans) {
+    conflicts.push({
+      type: 'unassigned_plan',
+      severity: 'warning',
+      plan: planId,
+      message: `Plan "${planId}" has no team assignment but team mode is enabled`,
+    });
+  }
+
+  // Detect capacity overload (more than 5 plans per team per phase)
+  const teamPlanCounts = getTeamsFromPhase(cwd, phase);
+  for (const [teamId, planIds] of Object.entries(teamPlanCounts)) {
+    if (planIds.length > 5) {
+      conflicts.push({
+        type: 'capacity_overload',
+        severity: 'warning',
+        team: teamId,
+        plan_count: planIds.length,
+        message: `Team "${teamId}" has ${planIds.length} plans assigned (threshold: 5)`,
+      });
+    }
+  }
+
+  return conflicts;
+}
+
+function buildTeamMatrix(cwd) {
+  const phaseDirs = listAllPhases(cwd);
+  const matrix = {};
+  const allTeams = new Set();
+
+  for (const dir of phaseDirs) {
+    const match = dir.match(/^(\d+(?:\.\d+)?)-?(.*)/);
+    const phaseNumber = match ? match[1] : dir;
+
+    const teamMap = getTeamsFromPhase(cwd, phaseNumber);
+
+    matrix[phaseNumber] = {};
+    for (const [teamId, planIds] of Object.entries(teamMap)) {
+      allTeams.add(teamId);
+
+      // Determine team status in this phase
+      const phaseInfo = findPhaseInternal(cwd, phaseNumber);
+      const phaseDir = phaseInfo ? path.join(cwd, phaseInfo.directory) : null;
+      let completedCount = 0;
+
+      if (phaseDir) {
+        for (const planId of planIds) {
+          const summaryFile = `${planId}-SUMMARY.md`;
+          if (fs.existsSync(path.join(phaseDir, summaryFile))) {
+            completedCount++;
+          }
+        }
+      }
+
+      const status = completedCount >= planIds.length ? 'complete' :
+                     completedCount > 0 ? 'in_progress' : 'pending';
+
+      matrix[phaseNumber][teamId] = {
+        plan_count: planIds.length,
+        plans: planIds,
+        completed: completedCount,
+        status,
+      };
+    }
+  }
+
+  return { matrix, teams: [...allTeams].sort() };
+}
+
+function extractTeamContracts(cwd, phase) {
+  const contracts = [];
+
+  // Try to read CONTRACTS.md from team directory
+  if (phase) {
+    const phaseInfo = findPhaseInternal(cwd, phase);
+    if (phaseInfo && phaseInfo.found) {
+      const contractsPath = path.join(cwd, phaseInfo.directory, 'teams', 'CONTRACTS.md');
+      const content = safeReadFile(contractsPath);
+      if (content) {
+        // Parse contract blocks: ## Contract: <id>
+        const contractBlocks = content.split(/^## Contract:\s*/m).filter(Boolean);
+        for (const block of contractBlocks) {
+          const lines = block.trim().split('\n');
+          const id = lines[0] ? lines[0].trim() : null;
+          if (!id) continue;
+
+          const betweenMatch = block.match(/\*\*Between:\*\*\s*(.+)/);
+          // Skip blocks that don't have a Between field (preamble/headers)
+          if (!betweenMatch) continue;
+
+          const typeMatch = block.match(/\*\*Type:\*\*\s*(.+)/);
+          const statusMatch = block.match(/\*\*Status:\*\*\s*(.+)/);
+
+          // Extract artifacts list
+          const artifactsMatch = block.match(/\*\*Artifacts:\*\*\s*([\s\S]*?)(?=\*\*|$)/);
+          const artifacts = [];
+          if (artifactsMatch) {
+            const artLines = artifactsMatch[1].trim().split('\n');
+            for (const line of artLines) {
+              const artMatch = line.match(/^\s*-\s+(.+)/);
+              if (artMatch) artifacts.push(artMatch[1].trim());
+            }
+          }
+
+          contracts.push({
+            id,
+            between: betweenMatch[1].trim().split(/\s*,\s*/),
+            type: typeMatch ? typeMatch[1].trim() : 'unknown',
+            artifacts,
+            status: statusMatch ? statusMatch[1].trim() : 'draft',
+          });
+        }
+      }
+    }
+  }
+
+  // Also infer contracts from team_dependencies in PLAN.md files
+  if (phase) {
+    const depGraph = getTeamDependencies(cwd, phase);
+    for (const [fromTeam, deps] of Object.entries(depGraph)) {
+      for (const dep of deps) {
+        if (!dep.to_team) continue;
+        // Check if this is already covered by an explicit contract
+        const alreadyCovered = contracts.some(c =>
+          c.between.includes(fromTeam) && c.between.includes(dep.to_team)
+        );
+        if (!alreadyCovered) {
+          contracts.push({
+            id: `inferred-${fromTeam}-${dep.to_team}`,
+            between: [fromTeam, dep.to_team],
+            type: 'inferred',
+            artifacts: dep.artifact ? [dep.artifact] : [],
+            status: 'inferred',
+          });
+        }
+      }
+    }
+  }
+
+  return contracts;
+}
+
+// ─── Team Commands ─────────────────────────────────────────────────────────────
+
+function cmdAnalyzeTeams(cwd, phase, raw) {
+  if (!phase) {
+    error('phase required for analyze-teams');
+  }
+
+  const phaseInfo = findPhaseInternal(cwd, phase);
+  if (!phaseInfo || !phaseInfo.found) {
+    output({ phase, error: 'Phase not found', teams: {}, team_count: 0, coordination_summary: null }, raw);
+    return;
+  }
+
+  const teamMap = getTeamsFromPhase(cwd, phase);
+  const depGraph = getTeamDependencies(cwd, phase);
+  const teamConfig = loadTeamConfig(cwd);
+
+  // Build team details
+  const teamsDetail = {};
+  for (const [teamId, planIds] of Object.entries(teamMap)) {
+    teamsDetail[teamId] = {
+      plan_count: planIds.length,
+      plans: planIds,
+      dependencies: depGraph[teamId] || [],
+    };
+  }
+
+  // Calculate coordination cost
+  const teamCount = Object.keys(teamMap).length;
+  const totalDeps = Object.values(depGraph).reduce((sum, deps) => sum + deps.length, 0);
+  // Coordination cost heuristic: n*(n-1)/2 pairwise interactions + dependency edges
+  const pairwiseCost = (teamCount * (teamCount - 1)) / 2;
+  const coordinationScore = pairwiseCost + totalDeps;
+  const coordinationLevel = coordinationScore === 0 ? 'none' :
+                            coordinationScore <= 3 ? 'low' :
+                            coordinationScore <= 10 ? 'medium' : 'high';
+
+  const result = {
+    phase: phaseInfo.phase_number,
+    team_mode_enabled: teamConfig.enabled,
+    teams: teamsDetail,
+    team_count: teamCount,
+    coordination_summary: {
+      pairwise_interactions: pairwiseCost,
+      dependency_edges: totalDeps,
+      coordination_score: coordinationScore,
+      level: coordinationLevel,
+    },
+  };
+
+  output(result, raw);
+}
+
+function cmdTeamMatrix(cwd, raw) {
+  const phaseDirs = listAllPhases(cwd);
+  if (phaseDirs.length === 0) {
+    output({ phases: [], teams: [], matrix: {}, utilization: {} }, raw);
+    return;
+  }
+
+  const { matrix, teams } = buildTeamMatrix(cwd);
+  const phases = phaseDirs.map(d => {
+    const m = d.match(/^(\d+(?:\.\d+)?)-?(.*)/);
+    return m ? m[1] : d;
+  });
+
+  // Calculate utilization: for each team, what percentage of phases have work
+  const utilization = {};
+  for (const teamId of teams) {
+    let phasesWithWork = 0;
+    for (const phaseNumber of phases) {
+      if (matrix[phaseNumber] && matrix[phaseNumber][teamId]) {
+        phasesWithWork++;
+      }
+    }
+    utilization[teamId] = phases.length > 0
+      ? Math.round((phasesWithWork / phases.length) * 100)
+      : 0;
+  }
+
+  const result = {
+    phases,
+    teams,
+    matrix,
+    utilization,
+  };
+
+  output(result, raw);
+}
+
+function cmdTeamContracts(cwd, phase, raw) {
+  const contracts = extractTeamContracts(cwd, phase);
+
+  // Validate: check if contracts have implementations (artifacts exist on disk)
+  const unimplemented = [];
+  const violated = [];
+
+  for (const contract of contracts) {
+    if (contract.status === 'inferred') {
+      unimplemented.push(contract.id);
+    }
+    // Check if the teams in the contract actually have plans assigned
+    if (phase) {
+      const teamMap = getTeamsFromPhase(cwd, phase);
+      for (const teamName of contract.between) {
+        if (!teamMap[teamName] || teamMap[teamName].length === 0) {
+          violated.push({
+            contract_id: contract.id,
+            team: teamName,
+            reason: `Team "${teamName}" referenced in contract but has no plans in this phase`,
+          });
+        }
+      }
+    }
+  }
+
+  const result = {
+    phase: phase || 'all',
+    contracts,
+    contract_count: contracts.length,
+    unimplemented,
+    violated,
+    has_violations: violated.length > 0,
+  };
+
+  output(result, raw);
+}
+
+function cmdTeamConflicts(cwd, phase, raw) {
+  if (!phase) {
+    error('phase required for team-conflicts');
+  }
+
+  const conflicts = detectTeamConflicts(cwd, phase);
+  const hasBlockers = conflicts.some(c => c.severity === 'blocker');
+
+  const result = {
+    phase,
+    conflicts,
+    conflict_count: conflicts.length,
+    has_blockers: hasBlockers,
+    by_severity: {
+      blocker: conflicts.filter(c => c.severity === 'blocker').length,
+      warning: conflicts.filter(c => c.severity === 'warning').length,
+      info: conflicts.filter(c => c.severity === 'info').length,
+    },
+  };
+
+  output(result, raw);
+}
+
+function cmdTeamDependencies(cwd, raw) {
+  const phaseDirs = listAllPhases(cwd);
+  const allDeps = {};
+  const allCycles = [];
+
+  for (const dir of phaseDirs) {
+    const match = dir.match(/^(\d+(?:\.\d+)?)-?(.*)/);
+    const phaseNumber = match ? match[1] : dir;
+    const depGraph = getTeamDependencies(cwd, phaseNumber);
+
+    for (const [fromTeam, deps] of Object.entries(depGraph)) {
+      if (!allDeps[fromTeam]) {
+        allDeps[fromTeam] = [];
+      }
+      for (const dep of deps) {
+        allDeps[fromTeam].push({
+          ...dep,
+          phase: phaseNumber,
+        });
+      }
+    }
+  }
+
+  // Detect cycles across the full dependency graph
+  const visited = new Set();
+  const inStack = new Set();
+
+  function detectCycle(node, pathSoFar) {
+    if (inStack.has(node)) {
+      const cycleStart = pathSoFar.indexOf(node);
+      const cycle = pathSoFar.slice(cycleStart).concat(node);
+      allCycles.push(cycle);
+      return;
+    }
+    if (visited.has(node)) return;
+
+    visited.add(node);
+    inStack.add(node);
+
+    const deps = allDeps[node] || [];
+    for (const dep of deps) {
+      if (dep.to_team) {
+        detectCycle(dep.to_team, [...pathSoFar, node]);
+      }
+    }
+
+    inStack.delete(node);
+  }
+
+  for (const team of Object.keys(allDeps)) {
+    detectCycle(team, []);
+  }
+
+  // Calculate critical path: longest dependency chain
+  const criticalPath = [];
+  const depLengths = {};
+
+  function longestPath(node, memo) {
+    if (memo[node] !== undefined) return memo[node];
+    const deps = allDeps[node] || [];
+    if (deps.length === 0) {
+      memo[node] = { length: 0, path: [node] };
+      return memo[node];
+    }
+    let maxLen = 0;
+    let maxPath = [node];
+    for (const dep of deps) {
+      if (dep.to_team && dep.to_team !== node) {
+        const sub = longestPath(dep.to_team, memo);
+        if (sub.length + 1 > maxLen) {
+          maxLen = sub.length + 1;
+          maxPath = [node, ...sub.path];
+        }
+      }
+    }
+    memo[node] = { length: maxLen, path: maxPath };
+    return memo[node];
+  }
+
+  const memo = {};
+  let longestOverall = { length: 0, path: [] };
+  for (const team of Object.keys(allDeps)) {
+    const result = longestPath(team, memo);
+    if (result.length > longestOverall.length) {
+      longestOverall = result;
+    }
+  }
+
+  const resultObj = {
+    dependencies: allDeps,
+    team_count: Object.keys(allDeps).length,
+    total_dependency_edges: Object.values(allDeps).reduce((sum, deps) => sum + deps.length, 0),
+    cycles: allCycles,
+    has_cycles: allCycles.length > 0,
+    critical_path: longestOverall.path,
+    critical_path_length: longestOverall.length,
+  };
+
+  output(resultObj, raw);
+}
+
+// ─── Team Init Commands ────────────────────────────────────────────────────────
+
+function cmdInitTeamPlanPhase(cwd, phase, includes, raw) {
+  if (!phase) {
+    error('phase required for init team-plan-phase');
+  }
+
+  const config = loadConfig(cwd);
+  const teamConfig = loadTeamConfig(cwd);
+  const phaseInfo = findPhaseInternal(cwd, phase);
+
+  // Get team context
+  const teamMap = phaseInfo && phaseInfo.found ? getTeamsFromPhase(cwd, phase) : {};
+  const depGraph = phaseInfo && phaseInfo.found ? getTeamDependencies(cwd, phase) : {};
+  const contracts = phaseInfo && phaseInfo.found ? extractTeamContracts(cwd, phase) : [];
+
+  const result = {
+    // Models for team agents
+    team_planner_model: resolveModelInternal(cwd, 'gsd-team-planner'),
+    team_coordinator_model: resolveModelInternal(cwd, 'gsd-team-coordinator'),
+    team_synthesizer_model: resolveModelInternal(cwd, 'gsd-team-synthesizer'),
+
+    // Standard models (fallback)
+    researcher_model: resolveModelInternal(cwd, 'gsd-phase-researcher'),
+    planner_model: resolveModelInternal(cwd, 'gsd-planner'),
+    checker_model: resolveModelInternal(cwd, 'gsd-plan-checker'),
+
+    // Workflow flags
+    research_enabled: config.research,
+    plan_checker_enabled: config.plan_checker,
+    commit_docs: config.commit_docs,
+
+    // Team config
+    team_enabled: teamConfig.enabled,
+    team_mode: teamConfig.mode,
+    available_teams: teamConfig.available_teams,
+
+    // Phase info
+    phase_found: !!phaseInfo,
+    phase_dir: phaseInfo?.directory || null,
+    phase_number: phaseInfo?.phase_number || null,
+    phase_name: phaseInfo?.phase_name || null,
+    phase_slug: phaseInfo?.phase_slug || null,
+    padded_phase: phaseInfo?.phase_number?.padStart(2, '0') || null,
+
+    // Existing artifacts
+    has_research: phaseInfo?.has_research || false,
+    has_context: phaseInfo?.has_context || false,
+    has_plans: (phaseInfo?.plans?.length || 0) > 0,
+    plan_count: phaseInfo?.plans?.length || 0,
+
+    // Team context
+    existing_teams: teamMap,
+    team_count: Object.keys(teamMap).length,
+    team_dependencies: depGraph,
+    contracts,
+    contract_count: contracts.length,
+
+    // Environment
+    planning_exists: pathExistsInternal(cwd, '.planning'),
+    roadmap_exists: pathExistsInternal(cwd, '.planning/ROADMAP.md'),
+  };
+
+  // Include file contents if requested via --include
+  if (includes.has('state')) {
+    result.state_content = safeReadFile(path.join(cwd, '.planning', 'STATE.md'));
+  }
+  if (includes.has('roadmap')) {
+    result.roadmap_content = safeReadFile(path.join(cwd, '.planning', 'ROADMAP.md'));
+  }
+  if (includes.has('requirements')) {
+    result.requirements_content = safeReadFile(path.join(cwd, '.planning', 'REQUIREMENTS.md'));
+  }
+  if (includes.has('config')) {
+    result.config_content = safeReadFile(path.join(cwd, '.planning', 'config.json'));
+  }
+  if (includes.has('contracts') && phaseInfo?.directory) {
+    result.contracts_content = safeReadFile(path.join(cwd, phaseInfo.directory, 'teams', 'CONTRACTS.md'));
+  }
+  if (includes.has('context') && phaseInfo?.directory) {
+    const phaseDirFull = path.join(cwd, phaseInfo.directory);
+    try {
+      const files = fs.readdirSync(phaseDirFull);
+      const contextFile = files.find(f => f.endsWith('-CONTEXT.md') || f === 'CONTEXT.md');
+      if (contextFile) {
+        result.context_content = safeReadFile(path.join(phaseDirFull, contextFile));
+      }
+    } catch {}
+  }
+  if (includes.has('research') && phaseInfo?.directory) {
+    const phaseDirFull = path.join(cwd, phaseInfo.directory);
+    try {
+      const files = fs.readdirSync(phaseDirFull);
+      const researchFile = files.find(f => f.endsWith('-RESEARCH.md') || f === 'RESEARCH.md');
+      if (researchFile) {
+        result.research_content = safeReadFile(path.join(phaseDirFull, researchFile));
+      }
+    } catch {}
+  }
+  if (includes.has('team-matrix')) {
+    const { matrix, teams } = buildTeamMatrix(cwd);
+    result.team_matrix = matrix;
+    result.all_teams = teams;
+  }
+
+  output(result, raw);
+}
+
+function cmdInitTeamExecutePhase(cwd, phase, includes, raw) {
+  if (!phase) {
+    error('phase required for init team-execute-phase');
+  }
+
+  const config = loadConfig(cwd);
+  const teamConfig = loadTeamConfig(cwd);
+  const phaseInfo = findPhaseInternal(cwd, phase);
+  const milestone = getMilestoneInfo(cwd);
+
+  // Get team context
+  const teamMap = phaseInfo && phaseInfo.found ? getTeamsFromPhase(cwd, phase) : {};
+  const depGraph = phaseInfo && phaseInfo.found ? getTeamDependencies(cwd, phase) : {};
+  const contracts = phaseInfo && phaseInfo.found ? extractTeamContracts(cwd, phase) : [];
+  const conflicts = phaseInfo && phaseInfo.found ? detectTeamConflicts(cwd, phase) : [];
+
+  // Resolve models for each team (with potential overrides)
+  const teamModels = {};
+  for (const teamId of Object.keys(teamMap)) {
+    teamModels[teamId] = {
+      executor_model: resolveModelInternal(cwd, 'gsd-executor', teamId),
+      coordinator_model: resolveModelInternal(cwd, 'gsd-team-coordinator', teamId),
+      verifier_model: resolveModelInternal(cwd, 'gsd-team-verifier', teamId),
+    };
+  }
+
+  const result = {
+    // Models
+    executor_model: resolveModelInternal(cwd, 'gsd-executor'),
+    team_coordinator_model: resolveModelInternal(cwd, 'gsd-team-coordinator'),
+    team_verifier_model: resolveModelInternal(cwd, 'gsd-team-verifier'),
+    verifier_model: resolveModelInternal(cwd, 'gsd-verifier'),
+
+    // Config flags
+    commit_docs: config.commit_docs,
+    parallelization: config.parallelization,
+    branching_strategy: config.branching_strategy,
+    phase_branch_template: config.phase_branch_template,
+    milestone_branch_template: config.milestone_branch_template,
+    verifier_enabled: config.verifier,
+
+    // Team config
+    team_enabled: teamConfig.enabled,
+    team_mode: teamConfig.mode,
+    available_teams: teamConfig.available_teams,
+
+    // Phase info
+    phase_found: !!phaseInfo,
+    phase_dir: phaseInfo?.directory || null,
+    phase_number: phaseInfo?.phase_number || null,
+    phase_name: phaseInfo?.phase_name || null,
+    phase_slug: phaseInfo?.phase_slug || null,
+
+    // Plan inventory
+    plans: phaseInfo?.plans || [],
+    summaries: phaseInfo?.summaries || [],
+    incomplete_plans: phaseInfo?.incomplete_plans || [],
+    plan_count: phaseInfo?.plans?.length || 0,
+    incomplete_count: phaseInfo?.incomplete_plans?.length || 0,
+
+    // Branch name
+    branch_name: config.branching_strategy === 'phase' && phaseInfo
+      ? config.phase_branch_template
+          .replace('{phase}', phaseInfo.phase_number)
+          .replace('{slug}', phaseInfo.phase_slug || 'phase')
+      : config.branching_strategy === 'milestone'
+        ? config.milestone_branch_template
+            .replace('{milestone}', milestone.version)
+            .replace('{slug}', generateSlugInternal(milestone.name) || 'milestone')
+        : null,
+
+    // Milestone info
+    milestone_version: milestone.version,
+    milestone_name: milestone.name,
+    milestone_slug: generateSlugInternal(milestone.name),
+
+    // Team context
+    team_assignments: teamMap,
+    team_count: Object.keys(teamMap).length,
+    team_dependencies: depGraph,
+    team_models: teamModels,
+    contracts,
+    contract_count: contracts.length,
+    conflicts,
+    has_blockers: conflicts.some(c => c.severity === 'blocker'),
+
+    // File existence
+    state_exists: pathExistsInternal(cwd, '.planning/STATE.md'),
+    roadmap_exists: pathExistsInternal(cwd, '.planning/ROADMAP.md'),
+    config_exists: pathExistsInternal(cwd, '.planning/config.json'),
+  };
+
+  // Include file contents if requested via --include
+  if (includes.has('state')) {
+    result.state_content = safeReadFile(path.join(cwd, '.planning', 'STATE.md'));
+  }
+  if (includes.has('config')) {
+    result.config_content = safeReadFile(path.join(cwd, '.planning', 'config.json'));
+  }
+  if (includes.has('roadmap')) {
+    result.roadmap_content = safeReadFile(path.join(cwd, '.planning', 'ROADMAP.md'));
+  }
+  if (includes.has('contracts') && phaseInfo?.directory) {
+    result.contracts_content = safeReadFile(path.join(cwd, phaseInfo.directory, 'teams', 'CONTRACTS.md'));
+  }
+  if (includes.has('team-matrix')) {
+    const { matrix, teams } = buildTeamMatrix(cwd);
+    result.team_matrix = matrix;
+    result.all_teams = teams;
+  }
+
+  output(result, raw);
+}
+
 // ─── CLI Router ───────────────────────────────────────────────────────────────
 
 async function main() {
@@ -4287,7 +5247,9 @@ async function main() {
     }
 
     case 'resolve-model': {
-      cmdResolveModel(cwd, args[1], raw);
+      const teamIdx = args.indexOf('--team');
+      const teamArg = teamIdx !== -1 ? args[teamIdx + 1] : undefined;
+      cmdResolveModel(cwd, args[1], raw, teamArg);
       break;
     }
 
@@ -4554,8 +5516,14 @@ async function main() {
         case 'progress':
           cmdInitProgress(cwd, includes, raw);
           break;
+        case 'team-plan-phase':
+          cmdInitTeamPlanPhase(cwd, args[2], includes, raw);
+          break;
+        case 'team-execute-phase':
+          cmdInitTeamExecutePhase(cwd, args[2], includes, raw);
+          break;
         default:
-          error(`Unknown init workflow: ${workflow}\nAvailable: execute-phase, plan-phase, new-project, new-milestone, quick, resume, verify-work, phase-op, todos, milestone-op, map-codebase, progress`);
+          error(`Unknown init workflow: ${workflow}\nAvailable: execute-phase, plan-phase, new-project, new-milestone, quick, resume, verify-work, phase-op, todos, milestone-op, map-codebase, progress, team-plan-phase, team-execute-phase`);
       }
       break;
     }
@@ -4586,6 +5554,31 @@ async function main() {
         limit: limitIdx !== -1 ? parseInt(args[limitIdx + 1], 10) : 10,
         freshness: freshnessIdx !== -1 ? args[freshnessIdx + 1] : null,
       }, raw);
+      break;
+    }
+
+    case 'analyze-teams': {
+      cmdAnalyzeTeams(cwd, args[1], raw);
+      break;
+    }
+
+    case 'team-matrix': {
+      cmdTeamMatrix(cwd, raw);
+      break;
+    }
+
+    case 'team-contracts': {
+      cmdTeamContracts(cwd, args[1], raw);
+      break;
+    }
+
+    case 'team-conflicts': {
+      cmdTeamConflicts(cwd, args[1], raw);
+      break;
+    }
+
+    case 'team-dependencies': {
+      cmdTeamDependencies(cwd, raw);
       break;
     }
 

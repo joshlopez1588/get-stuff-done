@@ -1,7 +1,7 @@
 ---
 name: gsd:verify-work
 description: Validate built features through conversational UAT
-argument-hint: "[phase number, e.g., '4']"
+argument-hint: "[phase number, e.g., '4'] [--team <team-name>]"
 allowed-tools:
   - Read
   - Bash
@@ -28,6 +28,14 @@ Output: {phase}-UAT.md tracking all test results. If issues found: diagnosed gap
 Phase: $ARGUMENTS (optional)
 - If provided: Test specific phase (e.g., "4")
 - If not provided: Check for active sessions or prompt for phase
+
+**Flags:**
+- `--team <team-name>` — Verify only the specified team's work (e.g., `--team frontend`). Without this flag, all work is verified (existing behavior).
+
+**Team mode behavior:**
+- `--team frontend` verifies only plans and summaries from the frontend team's directory
+- Without `--team` flag: verifies all work across all teams (default behavior)
+- Team mode routes verification issues to specialist debuggers scoped to the team's domain, providing more targeted diagnosis and fix suggestions
 
 @.planning/STATE.md
 @.planning/ROADMAP.md
