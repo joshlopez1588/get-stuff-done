@@ -1,6 +1,6 @@
 <div align="center">
 
-# GET SHIT DONE — Agent Teams Edition
+# GET STUFF DONE — Agent Teams Edition
 
 **A fork of [glittercowboy/get-shit-done](https://github.com/glittercowboy/get-shit-done) with multi-agent team support.**
 
@@ -11,7 +11,7 @@
 
 <br>
 
-> **This is an enhancement fork.** The original GSD by [TACHES](https://github.com/glittercowboy) is an incredible system. This fork extends it with agent teams — domain-specialized planners and executors that work in parallel, each with their own 1M token context window. All team features are opt-in and backward-compatible.
+> **This is an experiment fork by a vibe coder.** I'm not a developer — I found the original [GSD by TACHES](https://github.com/glittercowboy) and thought it was incredible. When Opus 4.6 dropped, I started experimenting with adding agent teams — domain-specialized planners and executors that work in parallel, each with their own 1M token context window. All credit for the core system goes to TACHES. All team features are opt-in and backward-compatible.
 
 </div>
 
@@ -109,29 +109,35 @@ All team features are gated behind `team.enabled` in `.planning/config.json` (de
 
 ---
 
-## Original README
+## About This Fork
 
-> Everything below is from the original [GET SHIT DONE](https://github.com/glittercowboy/get-shit-done) project by TACHES.
+I'm a vibe coder — not a developer. I found the original [GSD by TACHES](https://github.com/glittercowboy/get-shit-done) and immediately saw how powerful it was. The core system handles context engineering, XML prompt formatting, subagent orchestration, and state management so you don't have to. You just run a few commands and things get built.
 
----
+When Opus 4.6 came out, I thought it would be worth experimenting with agent teams inside this framework. The idea: instead of one planner and one executor per phase, decompose the work across domain-specialized agents (frontend, backend, security, testing, etc.) that each get a fresh 1M token context window. That's what this fork adds.
 
-## Why I Built This
-
-I'm a solo developer. I don't write code — Claude Code does.
-
-Other spec-driven development tools exist; BMAD, Speckit... But they all seem to make things way more complicated than they need to be (sprint ceremonies, story points, stakeholder syncs, retrospectives, Jira workflows) or lack real big picture understanding of what you're building. I'm not a 50-person software company. I don't want to play enterprise theater. I'm just a creative person trying to build great things that work.
-
-So I built GSD. The complexity is in the system, not in your workflow. Behind the scenes: context engineering, XML prompt formatting, subagent orchestration, state management. What you see: a few commands that just work.
-
-The system gives Claude everything it needs to do the work *and* verify it. I trust the workflow. It just does a good job.
-
-That's what this is. No enterprise roleplay bullshit. Just an incredibly effective system for building cool stuff consistently using Claude Code.
-
-— **TÂCHES**
+**All credit for the core GSD system goes to [TACHES](https://github.com/glittercowboy).** I just layered team orchestration on top.
 
 ---
 
-Vibecoding has a bad reputation. You describe what you want, AI generates code, and you get inconsistent garbage that falls apart at scale.
+## Original GSD README
+
+> Everything below is adapted from the original [GSD](https://github.com/glittercowboy/get-shit-done) project by TACHES.
+
+---
+
+## Why GSD Exists
+
+GSD was built for solo creators who use Claude Code. Other spec-driven development tools exist (BMAD, Speckit...) but they tend to add unnecessary complexity — sprint ceremonies, story points, stakeholder syncs, retrospectives. GSD takes the opposite approach: the complexity is in the system, not in your workflow.
+
+Behind the scenes: context engineering, XML prompt formatting, subagent orchestration, state management. What you see: a few commands that just work.
+
+The system gives Claude everything it needs to do the work *and* verify it. Just an incredibly effective system for building cool stuff consistently using Claude Code.
+
+— **TÂCHES** (original author)
+
+---
+
+Vibe coding gets a bad reputation. You describe what you want, AI generates code, and you get inconsistent results that fall apart at scale.
 
 GSD fixes that. It's the context engineering layer that makes Claude Code reliable. Describe your idea, let the system extract everything it needs to know, and let Claude Code get to work.
 
@@ -146,39 +152,55 @@ People who want to describe what they want and have it built correctly — witho
 ## Getting Started
 
 ```bash
-npx get-shit-done-cc@latest
+git clone https://github.com/joshlopez1588/get-stuff-done.git /tmp/gsd-install \
+  && node /tmp/gsd-install/bin/install.js --claude --global \
+  && rm -rf /tmp/gsd-install
 ```
 
-The installer prompts you to choose:
-1. **Runtime** — Claude Code, OpenCode, Gemini, or all
-2. **Location** — Global (all projects) or local (current project only)
+The installer copies commands, agents, workflows, and hooks to your config directory.
 
-Verify with `/gsd:help` inside your chosen runtime.
+Verify with `/gsd:help` inside Claude Code.
 
 ### Staying Updated
 
-GSD evolves fast. Update periodically:
+GSD evolves fast. Run `/gsd:update` inside Claude Code, or manually:
 
 ```bash
-npx get-shit-done-cc@latest
+git clone https://github.com/joshlopez1588/get-stuff-done.git /tmp/gsd-install \
+  && node /tmp/gsd-install/bin/install.js --claude --global \
+  && rm -rf /tmp/gsd-install
+```
+
+### Syncing Upstream Changes
+
+This fork tracks [glittercowboy/get-shit-done](https://github.com/glittercowboy/get-shit-done). To pull in upstream improvements:
+
+```
+/gsd:sync
 ```
 
 <details>
 <summary><strong>Non-interactive Install (Docker, CI, Scripts)</strong></summary>
 
 ```bash
+# Clone once, install for your runtime
+git clone https://github.com/joshlopez1588/get-stuff-done.git /tmp/gsd-install
+
 # Claude Code
-npx get-shit-done-cc --claude --global   # Install to ~/.claude/
-npx get-shit-done-cc --claude --local    # Install to ./.claude/
+node /tmp/gsd-install/bin/install.js --claude --global   # Install to ~/.claude/
+node /tmp/gsd-install/bin/install.js --claude --local    # Install to ./.claude/
 
 # OpenCode (open source, free models)
-npx get-shit-done-cc --opencode --global # Install to ~/.config/opencode/
+node /tmp/gsd-install/bin/install.js --opencode --global # Install to ~/.config/opencode/
 
 # Gemini CLI
-npx get-shit-done-cc --gemini --global   # Install to ~/.gemini/
+node /tmp/gsd-install/bin/install.js --gemini --global   # Install to ~/.gemini/
 
 # All runtimes
-npx get-shit-done-cc --all --global      # Install to all directories
+node /tmp/gsd-install/bin/install.js --all --global      # Install to all directories
+
+# Clean up
+rm -rf /tmp/gsd-install
 ```
 
 Use `--global` (`-g`) or `--local` (`-l`) to skip the location prompt.
@@ -192,8 +214,8 @@ Use `--claude`, `--opencode`, `--gemini`, or `--all` to skip the runtime prompt.
 Clone the repository and run the installer locally:
 
 ```bash
-git clone https://github.com/glittercowboy/get-shit-done.git
-cd get-shit-done
+git clone https://github.com/joshlopez1588/get-stuff-done.git
+cd get-stuff-done
 node bin/install.js --claude --local
 ```
 
@@ -657,18 +679,22 @@ This prevents Claude from reading these files entirely, regardless of what comma
 
 **Commands not working as expected?**
 - Run `/gsd:help` to verify installation
-- Re-run `npx get-shit-done-cc` to reinstall
+- Re-run the git clone + install command to reinstall
 
 **Updating to the latest version?**
 ```bash
-npx get-shit-done-cc@latest
+git clone https://github.com/joshlopez1588/get-stuff-done.git /tmp/gsd-install \
+  && node /tmp/gsd-install/bin/install.js --claude --global \
+  && rm -rf /tmp/gsd-install
 ```
 
 **Using Docker or containerized environments?**
 
 If file reads fail with tilde paths (`~/.claude/...`), set `CLAUDE_CONFIG_DIR` before installing:
 ```bash
-CLAUDE_CONFIG_DIR=/home/youruser/.claude npx get-shit-done-cc --global
+git clone https://github.com/joshlopez1588/get-stuff-done.git /tmp/gsd-install \
+  && CLAUDE_CONFIG_DIR=/home/youruser/.claude node /tmp/gsd-install/bin/install.js --global \
+  && rm -rf /tmp/gsd-install
 ```
 This ensures absolute paths are used instead of `~` which may not expand correctly in containers.
 
@@ -677,13 +703,17 @@ This ensures absolute paths are used instead of `~` which may not expand correct
 To remove GSD completely:
 
 ```bash
+git clone https://github.com/joshlopez1588/get-stuff-done.git /tmp/gsd-install
+
 # Global installs
-npx get-shit-done-cc --claude --global --uninstall
-npx get-shit-done-cc --opencode --global --uninstall
+node /tmp/gsd-install/bin/install.js --claude --global --uninstall
+node /tmp/gsd-install/bin/install.js --opencode --global --uninstall
 
 # Local installs (current project)
-npx get-shit-done-cc --claude --local --uninstall
-npx get-shit-done-cc --opencode --local --uninstall
+node /tmp/gsd-install/bin/install.js --claude --local --uninstall
+node /tmp/gsd-install/bin/install.js --opencode --local --uninstall
+
+rm -rf /tmp/gsd-install
 ```
 
 This removes all GSD commands, agents, hooks, and settings while preserving your other configurations.
@@ -692,7 +722,7 @@ This removes all GSD commands, agents, hooks, and settings while preserving your
 
 ## Community Ports
 
-OpenCode and Gemini CLI are now natively supported via `npx get-shit-done-cc`.
+OpenCode and Gemini CLI are natively supported by the upstream project.
 
 These community ports pioneered multi-runtime support:
 

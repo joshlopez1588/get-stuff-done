@@ -19,8 +19,8 @@ Output: Handoff document, updated team state, receiving team briefed with integr
 </objective>
 
 <execution_context>
-@~/.claude/get-shit-done/references/ui-brand.md
-@~/.claude/get-shit-done/templates/team-plan.md
+@~/.claude/get-stuff-done/references/ui-brand.md
+@~/.claude/get-stuff-done/templates/team-plan.md
 </execution_context>
 
 <context>
@@ -289,7 +289,7 @@ For receiving team pending plans:
 ## 7. Commit and Display Summary
 
 ```bash
-node ~/.claude/get-shit-done/bin/gsd-tools.js commit "docs(${PHASE}): handoff ${FROM_TEAM} → ${TO_TEAM}" --files .planning/phases/${PHASE}-*/teams/HANDOFF-${FROM_TEAM}-to-${TO_TEAM}.md .planning/.team-state/
+node ~/.claude/get-stuff-done/bin/gsd-tools.js commit "docs(${PHASE}): handoff ${FROM_TEAM} → ${TO_TEAM}" --files .planning/phases/${PHASE}-*/teams/HANDOFF-${FROM_TEAM}-to-${TO_TEAM}.md .planning/.team-state/
 ```
 
 ```

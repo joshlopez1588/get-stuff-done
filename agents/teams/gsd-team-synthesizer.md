@@ -230,7 +230,7 @@ PLAN-04 (wave-3): frontend-T1 "UserList" + frontend-T2 "Dashboard page"
 
 Detection:
 ```bash
-node ~/.claude/get-shit-done/bin/gsd-tools.js team-conflicts --phase "$PHASE_NUM"
+node ~/.claude/get-stuff-done/bin/gsd-tools.js team-conflicts --phase "$PHASE_NUM"
 ```
 
 Manual detection:
@@ -347,7 +347,7 @@ Write to CONFLICTS.md and escalate to user when:
 ### Building the Global Dependency Graph
 
 ```bash
-node ~/.claude/get-shit-done/bin/gsd-tools.js team-dependencies
+node ~/.claude/get-stuff-done/bin/gsd-tools.js team-dependencies
 ```
 
 Manual construction:
@@ -518,7 +518,7 @@ curl -s http://localhost:3000/api/users | jq '.users | length'
 
 ```bash
 # Generate contracts from team fragments
-node ~/.claude/get-shit-done/bin/gsd-tools.js team-contracts --phase "$PHASE_NUM"
+node ~/.claude/get-stuff-done/bin/gsd-tools.js team-contracts --phase "$PHASE_NUM"
 ```
 
 ### Contract Quality Checks
@@ -584,8 +584,8 @@ Output: [Artifacts created by this plan]
 </objective>
 
 <execution_context>
-@~/.claude/get-shit-done/workflows/execute-plan.md
-@~/.claude/get-shit-done/templates/summary.md
+@~/.claude/get-stuff-done/workflows/execute-plan.md
+@~/.claude/get-stuff-done/templates/summary.md
 </execution_context>
 
 <context>
@@ -683,8 +683,8 @@ If frontend task needs backend artifact:
 
 ```bash
 for plan in "$PHASE_DIR"/*-PLAN.md; do
-  VALID=$(node ~/.claude/get-shit-done/bin/gsd-tools.js frontmatter validate "$plan" --schema plan)
-  STRUCTURE=$(node ~/.claude/get-shit-done/bin/gsd-tools.js verify plan-structure "$plan")
+  VALID=$(node ~/.claude/get-stuff-done/bin/gsd-tools.js frontmatter validate "$plan" --schema plan)
+  STRUCTURE=$(node ~/.claude/get-stuff-done/bin/gsd-tools.js verify plan-structure "$plan")
   echo "$plan: valid=$VALID structure=$STRUCTURE"
 done
 ```
@@ -744,7 +744,7 @@ For each fragment:
 Run conflict detection:
 
 ```bash
-node ~/.claude/get-shit-done/bin/gsd-tools.js team-conflicts --phase "$PHASE_NUM"
+node ~/.claude/get-stuff-done/bin/gsd-tools.js team-conflicts --phase "$PHASE_NUM"
 ```
 
 Check for:
@@ -760,7 +760,7 @@ If conflicts found, apply resolution strategies from conflict_detection section.
 Build global dependency graph and compute wave ordering:
 
 ```bash
-node ~/.claude/get-shit-done/bin/gsd-tools.js team-dependencies
+node ~/.claude/get-stuff-done/bin/gsd-tools.js team-dependencies
 ```
 
 1. Match all needs to provides
@@ -774,7 +774,7 @@ node ~/.claude/get-shit-done/bin/gsd-tools.js team-dependencies
 Create or update CONTRACTS.md:
 
 ```bash
-node ~/.claude/get-shit-done/bin/gsd-tools.js team-contracts --phase "$PHASE_NUM"
+node ~/.claude/get-stuff-done/bin/gsd-tools.js team-contracts --phase "$PHASE_NUM"
 ```
 
 For each provides/needs pair:
@@ -908,8 +908,8 @@ If escalated conflicts exist, return them prominently in structured_returns.
 <step name="validate_final_plans">
 ```bash
 for plan in "$PHASE_DIR"/*-PLAN.md; do
-  VALID=$(node ~/.claude/get-shit-done/bin/gsd-tools.js frontmatter validate "$plan" --schema plan)
-  STRUCTURE=$(node ~/.claude/get-shit-done/bin/gsd-tools.js verify plan-structure "$plan")
+  VALID=$(node ~/.claude/get-stuff-done/bin/gsd-tools.js frontmatter validate "$plan" --schema plan)
+  STRUCTURE=$(node ~/.claude/get-stuff-done/bin/gsd-tools.js verify plan-structure "$plan")
   echo "$(basename $plan): valid=$VALID"
 done
 ```
@@ -942,7 +942,7 @@ Plans:
 
 <step name="git_commit">
 ```bash
-node ~/.claude/get-shit-done/bin/gsd-tools.js commit "docs($PHASE): synthesize team plans into unified PLAN.md files" --files "$PHASE_DIR/"*-PLAN.md "$PHASE_DIR/teams/CONTRACTS.md" "$PHASE_DIR/teams/CONFLICTS.md" "$PHASE_DIR/teams/SYNTHESIS.md" .planning/ROADMAP.md
+node ~/.claude/get-stuff-done/bin/gsd-tools.js commit "docs($PHASE): synthesize team plans into unified PLAN.md files" --files "$PHASE_DIR/"*-PLAN.md "$PHASE_DIR/teams/CONTRACTS.md" "$PHASE_DIR/teams/CONFLICTS.md" "$PHASE_DIR/teams/SYNTHESIS.md" .planning/ROADMAP.md
 ```
 </step>
 

@@ -7,31 +7,31 @@ allowed-tools:
 ---
 
 <objective>
-Check for GSD updates, install if available, and display what changed.
+Check for GSD fork updates on GitHub, install if available, and display what changed.
 
 Routes to the update workflow which handles:
 - Version detection (local vs global installation)
-- npm version checking
+- GitHub version checking (raw.githubusercontent.com)
 - Changelog fetching and display
 - User confirmation with clean install warning
-- Update execution and cache clearing
+- Update execution via git clone
 - Restart reminder
 </objective>
 
 <execution_context>
-@~/.claude/get-shit-done/workflows/update.md
+@~/.claude/get-stuff-done/workflows/update.md
 </execution_context>
 
 <process>
-**Follow the update workflow** from `@~/.claude/get-shit-done/workflows/update.md`.
+**Follow the update workflow** from `@~/.claude/get-stuff-done/workflows/update.md`.
 
 The workflow handles all logic including:
 1. Installed version detection (local/global)
-2. Latest version checking via npm
+2. Latest version checking via GitHub raw URL
 3. Version comparison
 4. Changelog fetching and extraction
 5. Clean install warning display
 6. User confirmation
-7. Update execution
+7. Update execution via git clone
 8. Cache clearing
 </process>

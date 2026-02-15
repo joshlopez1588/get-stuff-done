@@ -18,8 +18,8 @@ Output: Updated config.json with team section, TEAM-MATRIX.md, and .planning/.te
 </objective>
 
 <execution_context>
-@~/.claude/get-shit-done/references/ui-brand.md
-@~/.claude/get-shit-done/templates/team-plan.md
+@~/.claude/get-stuff-done/references/ui-brand.md
+@~/.claude/get-stuff-done/templates/team-plan.md
 </execution_context>
 
 <context>

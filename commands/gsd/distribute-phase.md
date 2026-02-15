@@ -20,8 +20,8 @@ Output: Team assignment suggestions with dependency graph. Optionally writes tea
 </objective>
 
 <execution_context>
-@~/.claude/get-shit-done/references/ui-brand.md
-@~/.claude/get-shit-done/templates/team-plan.md
+@~/.claude/get-stuff-done/references/ui-brand.md
+@~/.claude/get-stuff-done/templates/team-plan.md
 </execution_context>
 
 <context>
@@ -103,7 +103,7 @@ Read each PLAN.md file. Extract:
 ## 3. Analyze Domain Content
 
 ```bash
-node ~/.claude/get-shit-done/bin/gsd-tools.js analyze-teams "${PHASE}"
+node ~/.claude/get-stuff-done/bin/gsd-tools.js analyze-teams "${PHASE}"
 ```
 
 For each plan, classify domain affinity based on:
@@ -143,7 +143,7 @@ Score each plan against each available team. A plan may have affinity for multip
 ## 5. Build Dependency Graph
 
 ```bash
-node ~/.claude/get-shit-done/bin/gsd-tools.js team-dependencies "${PHASE}"
+node ~/.claude/get-stuff-done/bin/gsd-tools.js team-dependencies "${PHASE}"
 ```
 
 For each suggested assignment, identify:
@@ -276,7 +276,7 @@ Create `.planning/phases/${PHASE}-*/teams/CONTRACTS.md` with cross-team interfac
 ## 9. Commit and Display Summary
 
 ```bash
-node ~/.claude/get-shit-done/bin/gsd-tools.js commit "docs(${PHASE}): distribute phase across teams" --files .planning/phases/${PHASE}-*/${PHASE}-*-PLAN.md .planning/phases/${PHASE}-*/teams/CONTRACTS.md
+node ~/.claude/get-stuff-done/bin/gsd-tools.js commit "docs(${PHASE}): distribute phase across teams" --files .planning/phases/${PHASE}-*/${PHASE}-*-PLAN.md .planning/phases/${PHASE}-*/teams/CONTRACTS.md
 ```
 
 ```
