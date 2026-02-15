@@ -40,7 +40,7 @@ The document should describe what you want to build.
 **MANDATORY FIRST STEP — Execute these checks before ANY user interaction:**
 
 ```bash
-INIT=$(node ~/.claude/get-stuff-done/bin/gsd-tools.js init new-project)
+INIT=$(node ~/.claude/get-stuff-done/bin/gsd-tools.cjs init new-project)
 ```
 
 Parse JSON for: `researcher_model`, `synthesizer_model`, `roadmapper_model`, `commit_docs`, `project_exists`, `has_codebase_map`, `planning_exists`, `has_existing_code`, `has_package_file`, `is_brownfield`, `needs_codebase_map`, `has_git`.
@@ -59,7 +59,7 @@ git init
 **If `needs_codebase_map` is true** (from init — existing code detected but no codebase map):
 
 Use AskUserQuestion:
-- header: "Existing Code"
+- header: "Codebase"
 - question: "I detected existing code in this directory. Would you like to map the codebase first?"
 - options:
   - "Map codebase first" — Run /gsd:map-codebase to understand existing architecture (Recommended)
@@ -212,10 +212,30 @@ Do not compress. Capture everything gathered.
 
 ```bash
 mkdir -p .planning
-node ~/.claude/get-stuff-done/bin/gsd-tools.js commit "docs: initialize project" --files .planning/PROJECT.md
+node ~/.claude/get-stuff-done/bin/gsd-tools.cjs commit "docs: initialize project" --files .planning/PROJECT.md
 ```
 
 ## 5. Workflow Preferences
+
+**Check for global defaults** at `~/.gsd/defaults.json`. If the file exists, offer to use saved defaults:
+
+```
+AskUserQuestion([
+  {
+    question: "Use your saved default settings? (from ~/.gsd/defaults.json)",
+    header: "Defaults",
+    multiSelect: false,
+    options: [
+      { label: "Yes (Recommended)", description: "Use saved defaults, skip settings questions" },
+      { label: "No", description: "Configure settings manually" }
+    ]
+  }
+])
+```
+
+If "Yes": read `~/.gsd/defaults.json`, use those values for config.json, and skip directly to **Commit config.json** below.
+
+If "No" or `~/.gsd/defaults.json` doesn't exist: proceed with the questions below.
 
 **Round 1 — Core workflow settings (4 questions):**
 
@@ -303,7 +323,7 @@ questions: [
     ]
   },
   {
-    header: "Model Profile",
+    header: "AI Models",
     question: "Which AI models for planning agents?",
     multiSelect: false,
     options: [
@@ -328,9 +348,22 @@ Create `.planning/config.json` with all settings:
     "research": true|false,
     "plan_check": true|false,
     "verifier": true|false
+  },
+  "team": {
+    "auto": true,
+    "mode": "distributed",
+    "model_overrides": {}
+  },
+  "testing": {
+    "e2e_framework": "playwright",
+    "run_e2e_on_verify": true
   }
 }
 ```
+
+**Team auto-detection** is enabled by default. Domain specialist teams (frontend, backend, security, data, devops, testing) are automatically detected and engaged during `/gsd:plan-phase` when 2+ domains are found in a phase. No manual setup required.
+
+**Playwright E2E testing** is configured by default. Tests run automatically during phase verification if Playwright is installed in the project.
 
 **If commit_docs = No:**
 - Set `commit_docs: false` in config.json
@@ -342,7 +375,7 @@ Create `.planning/config.json` with all settings:
 **Commit config.json:**
 
 ```bash
-node ~/.claude/get-stuff-done/bin/gsd-tools.js commit "chore: add project config" --files .planning/config.json
+node ~/.claude/get-stuff-done/bin/gsd-tools.cjs commit "chore: add project config" --files .planning/config.json
 ```
 
 **Note:** Run `/gsd:settings` anytime to update these preferences.
@@ -596,16 +629,18 @@ Display research complete banner and key findings:
 Files: `.planning/research/`
 ```
 
-### 6.5. Team Capability Analysis (if team mode enabled)
+### 6.5. Team Capability Analysis (automatic)
+
+Teams are always analyzed during project setup. Domain specialist teams are automatically engaged during planning and execution when multi-domain work is detected.
 
 ```bash
-GSD_TOOLS=~/.claude/get-stuff-done/bin/gsd-tools.js
-TEAM_ENABLED=$(node "$GSD_TOOLS" config-get team.enabled 2>/dev/null || echo "false")
+GSD_TOOLS=~/.claude/get-stuff-done/bin/gsd-tools.cjs
+TEAM_AUTO=$(node "$GSD_TOOLS" config-get team.auto 2>/dev/null || echo "true")
 ```
 
-**If `TEAM_ENABLED` is "false":** Skip entirely — proceed to Step 7.
+**If `TEAM_AUTO` is "false":** Skip entirely — proceed to Step 7.
 
-**If `TEAM_ENABLED` is "true":**
+**If `TEAM_AUTO` is "true" (default):**
 
 1. **Analyze SUMMARY.md to determine which teams are needed per suggested phase:**
 
@@ -744,7 +779,7 @@ For each capability mentioned:
 
 For each category, use AskUserQuestion:
 
-- header: "[Category name]"
+- header: "[Category]" (max 12 chars)
 - question: "Which [category] features are in v1?"
 - multiSelect: true
 - options:
@@ -821,7 +856,7 @@ If "adjust": Return to scoping.
 **Commit requirements:**
 
 ```bash
-node ~/.claude/get-stuff-done/bin/gsd-tools.js commit "docs: define v1 requirements" --files .planning/REQUIREMENTS.md
+node ~/.claude/get-stuff-done/bin/gsd-tools.cjs commit "docs: define v1 requirements" --files .planning/REQUIREMENTS.md
 ```
 
 ## 8. Create Roadmap
@@ -958,7 +993,7 @@ Use AskUserQuestion:
 **Commit roadmap (after approval or auto mode):**
 
 ```bash
-node ~/.claude/get-stuff-done/bin/gsd-tools.js commit "docs: create roadmap ([N] phases)" --files .planning/ROADMAP.md .planning/STATE.md .planning/REQUIREMENTS.md
+node ~/.claude/get-stuff-done/bin/gsd-tools.cjs commit "docs: create roadmap ([N] phases)" --files .planning/ROADMAP.md .planning/STATE.md .planning/REQUIREMENTS.md
 ```
 
 ## 9. Done

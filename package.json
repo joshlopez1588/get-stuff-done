@@ -1,6 +1,6 @@
 {
   "name": "get-stuff-done",
-  "version": "1.18.0",
+  "version": "1.19.1",
   "description": "Agent Teams Edition — a fork of GSD with multi-agent team support for Claude Code, OpenCode and Gemini.",
   "bin": {
     "get-stuff-done": "bin/install.js"
@@ -43,6 +43,6 @@
   "scripts": {
     "build:hooks": "node scripts/build-hooks.js",
     "prepublishOnly": "npm run build:hooks",
-    "test": "node --test get-stuff-done/bin/gsd-tools.test.js"
+    "test": "node --test get-stuff-done/bin/gsd-tools.test.cjs"
   }
 }

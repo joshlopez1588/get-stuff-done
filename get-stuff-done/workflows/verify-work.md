@@ -24,7 +24,7 @@ No Pass/Fail buttons. No severity questions. Just: "Here's what should happen. D
 If $ARGUMENTS contains a phase number, load context:
 
 ```bash
-INIT=$(node ~/.claude/get-stuff-done/bin/gsd-tools.js init verify-work "${PHASE_ARG}")
+INIT=$(node ~/.claude/get-stuff-done/bin/gsd-tools.cjs init verify-work "${PHASE_ARG}")
 ```
 
 Parse JSON for: `planner_model`, `checker_model`, `commit_docs`, `phase_found`, `phase_dir`, `phase_number`, `phase_name`, `has_verification`.
@@ -292,7 +292,7 @@ Clear Current Test section:
 
 Commit the UAT file:
 ```bash
-node ~/.claude/get-stuff-done/bin/gsd-tools.js commit "test({phase}): complete UAT - {passed} passed, {issues} issues" --files ".planning/phases/XX-name/{phase}-UAT.md"
+node ~/.claude/get-stuff-done/bin/gsd-tools.cjs commit "test({phase}): complete UAT - {passed} passed, {issues} issues" --files ".planning/phases/XX-name/{phase}-UAT.md"
 ```
 
 Present summary:
@@ -325,14 +325,17 @@ All tests passed. Ready to continue.
 <step name="diagnose_issues">
 **Diagnose root causes before planning fixes:**
 
-**Check team mode:**
+**Auto-detect team mode (check for team plan artifacts):**
 
 ```bash
-GSD_TOOLS=~/.claude/get-stuff-done/bin/gsd-tools.js
-TEAM_ENABLED=$(node "$GSD_TOOLS" config-get team.enabled 2>/dev/null || echo "false")
+GSD_TOOLS=~/.claude/get-stuff-done/bin/gsd-tools.cjs
+TEAM_EXECUTION=false
+if [ -f ".planning/phases/${PHASE_DIR}/teams/CONTRACTS.md" ] || grep -ql "^team:" "${PHASE_DIR}"/*-PLAN.md 2>/dev/null; then
+  TEAM_EXECUTION=true
+fi
 ```
 
-### If team mode is DISABLED (default):
+### If TEAM_EXECUTION is false (solo):
 
 ```
 ---
@@ -351,7 +354,7 @@ Spawning parallel debug agents to investigate each issue.
 
 Diagnosis runs automatically - no user prompt. Parallel agents investigate simultaneously, so overhead is minimal and fixes are more accurate.
 
-### If team mode is ENABLED:
+### If TEAM_EXECUTION is true (team plans detected):
 
 ```
 ---
@@ -502,7 +505,7 @@ Plans must be executable prompts.
 )
 ```
 
-### If team mode is ENABLED:
+### If TEAM_EXECUTION is true (team plans detected):
 
 Spawn gsd-planner in --gaps mode with team context, so fix plans are assigned to the correct teams:
 

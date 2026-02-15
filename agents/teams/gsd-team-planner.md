@@ -133,7 +133,7 @@ Available teams (from config):
 
 ```bash
 # Analyze which teams are needed for the phase
-node ~/.claude/get-stuff-done/bin/gsd-tools.js analyze-teams --phase "$PHASE_NUM"
+node ~/.claude/get-stuff-done/bin/gsd-tools.cjs analyze-teams --phase "$PHASE_NUM"
 ```
 
 **Step 2: Determine Team Necessity**
@@ -368,7 +368,7 @@ Cross-team dependencies are declared within tasks:
 **Step 1: Build the Team Dependency Matrix**
 
 ```bash
-node ~/.claude/get-stuff-done/bin/gsd-tools.js team-matrix
+node ~/.claude/get-stuff-done/bin/gsd-tools.cjs team-matrix
 ```
 
 Map which teams depend on which:
@@ -449,7 +449,7 @@ contracts:
 
 ```bash
 # Check for file conflicts across team plans
-node ~/.claude/get-stuff-done/bin/gsd-tools.js team-conflicts --phase "$PHASE_NUM"
+node ~/.claude/get-stuff-done/bin/gsd-tools.cjs team-conflicts --phase "$PHASE_NUM"
 ```
 
 If conflict detected:
@@ -473,7 +473,7 @@ frontend imports:   import { UserType } from '@/types/user'
 Load planning context:
 
 ```bash
-INIT=$(node ~/.claude/get-stuff-done/bin/gsd-tools.js init plan-phase "${PHASE}")
+INIT=$(node ~/.claude/get-stuff-done/bin/gsd-tools.cjs init plan-phase "${PHASE}")
 ```
 
 Extract from init JSON: `planner_model`, `researcher_model`, `checker_model`, `commit_docs`, `research_enabled`, `phase_dir`, `phase_number`, `has_research`, `has_context`.
@@ -527,7 +527,7 @@ Read existing PLAN.md, TEAM-PLAN.md, or DISCOVERY.md in phase directory.
 Determine which domain teams this phase requires.
 
 ```bash
-node ~/.claude/get-stuff-done/bin/gsd-tools.js analyze-teams --phase "$PHASE_NUM"
+node ~/.claude/get-stuff-done/bin/gsd-tools.cjs analyze-teams --phase "$PHASE_NUM"
 ```
 
 Manual analysis (if tool unavailable):
@@ -623,7 +623,7 @@ Intra-team dependencies follow standard wave ordering.
 
 <step name="build_cross_team_dependency_graph">
 ```bash
-node ~/.claude/get-stuff-done/bin/gsd-tools.js team-dependencies
+node ~/.claude/get-stuff-done/bin/gsd-tools.cjs team-dependencies
 ```
 
 Map all cross-team dependencies:
@@ -676,7 +676,7 @@ Sync point = the team-coordinator verifies artifacts before dependent teams star
 For each cross-team dependency, create a formal contract:
 
 ```bash
-node ~/.claude/get-stuff-done/bin/gsd-tools.js team-contracts --phase "$PHASE_NUM"
+node ~/.claude/get-stuff-done/bin/gsd-tools.cjs team-contracts --phase "$PHASE_NUM"
 ```
 
 Contract format:
@@ -719,7 +719,7 @@ Validate each TEAM-PLAN.md fragment:
 
 ```bash
 for fragment in "$phase_dir"/teams/*-TEAM-PLAN.md; do
-  VALID=$(node ~/.claude/get-stuff-done/bin/gsd-tools.js frontmatter validate "$fragment" --schema team-plan)
+  VALID=$(node ~/.claude/get-stuff-done/bin/gsd-tools.cjs frontmatter validate "$fragment" --schema team-plan)
   echo "$fragment: $VALID"
 done
 ```
@@ -749,7 +749,7 @@ Contains:
 
 <step name="git_commit">
 ```bash
-node ~/.claude/get-stuff-done/bin/gsd-tools.js commit "docs($PHASE): create team plan fragments" --files "$phase_dir/teams/"
+node ~/.claude/get-stuff-done/bin/gsd-tools.cjs commit "docs($PHASE): create team plan fragments" --files "$phase_dir/teams/"
 ```
 </step>
 

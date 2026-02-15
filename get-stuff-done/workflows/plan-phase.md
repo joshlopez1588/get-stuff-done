@@ -15,7 +15,7 @@ Read all files referenced by the invoking prompt's execution_context before star
 Load all context in one call (include file contents to avoid redundant reads):
 
 ```bash
-INIT=$(node ~/.claude/get-stuff-done/bin/gsd-tools.js init plan-phase "$PHASE" --include state,roadmap,requirements,context,research,verification,uat)
+INIT=$(node ~/.claude/get-stuff-done/bin/gsd-tools.cjs init plan-phase "$PHASE" --include state,roadmap,requirements,context,research,verification,uat)
 ```
 
 Parse JSON for: `researcher_model`, `planner_model`, `checker_model`, `research_enabled`, `plan_checker_enabled`, `commit_docs`, `phase_found`, `phase_dir`, `phase_number`, `phase_name`, `phase_slug`, `padded_phase`, `has_research`, `has_context`, `has_plans`, `plan_count`, `planning_exists`, `roadmap_exists`.
@@ -24,46 +24,43 @@ Parse JSON for: `researcher_model`, `planner_model`, `checker_model`, `research_
 
 **If `planning_exists` is false:** Error — run `/gsd:new-project` first.
 
-## 1.5. Team Detection (if team mode enabled)
+## 1.5. Automatic Team Detection
 
-Check if team mode is active:
-
-```bash
-TEAM_ENABLED=$(node "$GSD_TOOLS" config-get team.enabled 2>/dev/null || echo "false")
-```
-
-**If `TEAM_ENABLED` is "false":** Skip entirely — proceed to Step 2 (all team logic bypassed, solo workflow unchanged).
-
-**If `TEAM_ENABLED` is "true":**
-
-1. **Initialize team planning for this phase:**
+Teams are automatically engaged when multi-domain work is detected. No manual initialization required.
 
 ```bash
-GSD_TOOLS=~/.claude/get-stuff-done/bin/gsd-tools.js
-TEAM_INIT=$(node "$GSD_TOOLS" init team-plan-phase "${PHASE}")
+GSD_TOOLS=~/.claude/get-stuff-done/bin/gsd-tools.cjs
+TEAM_AUTO=$(node "$GSD_TOOLS" config-get team.auto 2>/dev/null || echo "true")
 ```
 
-2. **Run team analysis to determine which specialist teams are needed:**
+**If `TEAM_AUTO` is "false":** Skip entirely — proceed to Step 2 (solo workflow).
 
-```bash
-TEAM_ANALYSIS=$(node "$GSD_TOOLS" analyze-teams --phase "${PHASE}")
-```
+**If `TEAM_AUTO` is "true" (default):**
 
-Parse the analysis output. Based on phase content, determine which specialist teams are needed:
+1. **Analyze phase content to detect which domains are needed:**
+
+Read the phase goal from ROADMAP.md, any CONTEXT.md, and RESEARCH.md. Scan for domain signals:
 
 | Detected Content | Team Domain | Agent Spawned |
 |-----------------|-------------|---------------|
-| Frontend/UI tasks (components, pages, styling) | `frontend` | gsd-team-planner domain=frontend |
-| Backend/API tasks (endpoints, services, middleware) | `backend` | gsd-team-planner domain=backend |
-| Auth/security requirements (login, permissions, encryption) | `security` | gsd-team-planner domain=security |
-| Infrastructure tasks (deploy, CI/CD, hosting) | `devops` | gsd-team-planner domain=devops |
-| Database/schema tasks (models, migrations, queries) | `data` | gsd-team-planner domain=data |
+| Frontend/UI tasks (components, pages, styling, React, CSS) | `frontend` | gsd-team-planner domain=frontend |
+| Backend/API tasks (endpoints, services, middleware, Express, routes) | `backend` | gsd-team-planner domain=backend |
+| Auth/security requirements (login, permissions, encryption, JWT) | `security` | gsd-team-planner domain=security |
+| Infrastructure tasks (deploy, CI/CD, hosting, Docker) | `devops` | gsd-team-planner domain=devops |
+| Database/schema tasks (models, migrations, queries, Prisma) | `data` | gsd-team-planner domain=data |
+| Testing requirements (test setup, coverage, E2E) | `testing` | gsd-team-planner domain=testing |
 
-3. **Create team directories under the phase:**
+2. **Decide team vs solo mode based on domain count:**
+
+- **1 domain detected:** Use solo planning (Step 8a) — team overhead unnecessary
+- **2+ domains detected:** Use team planning (Step 8b) — parallel specialist planners
+
+Set `TEAM_PLANNING=true` if 2+ domains detected, `false` otherwise.
+
+3. **If team planning, scaffold directories:**
 
 ```bash
 mkdir -p ".planning/phases/${PHASE_DIR}/teams"
-# Create subdirectories for each detected team domain
 for DOMAIN in $DETECTED_DOMAINS; do
   mkdir -p ".planning/phases/${PHASE_DIR}/teams/${DOMAIN}"
 done
@@ -72,11 +69,17 @@ done
 Display banner:
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- GSD ► TEAM MODE ACTIVE
+ GSD ► TEAMS AUTO-DETECTED
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-◆ Teams detected: {list of domain names}
-◆ Team directories created under .planning/phases/{phase}/teams/
+◆ {N} domains detected: {list of domain names}
+◆ Using team planning with parallel specialist planners
+```
+
+**If only 1 domain detected:**
+```
+◆ Single domain detected: {domain}
+◆ Using solo planning (team overhead not needed)
 ```
 
 ## 2. Parse and Normalize Arguments
@@ -95,7 +98,7 @@ mkdir -p ".planning/phases/${padded_phase}-${phase_slug}"
 ## 3. Validate Phase
 
 ```bash
-PHASE_INFO=$(node ~/.claude/get-stuff-done/bin/gsd-tools.js roadmap get-phase "${PHASE}")
+PHASE_INFO=$(node ~/.claude/get-stuff-done/bin/gsd-tools.cjs roadmap get-phase "${PHASE}")
 ```
 
 **If `found` is false:** Error with available phases. **If `found` is true:** Extract `phase_number`, `phase_name`, `goal` from JSON.
@@ -128,10 +131,10 @@ Display banner:
 ### Spawn gsd-phase-researcher
 
 ```bash
-PHASE_DESC=$(node ~/.claude/get-stuff-done/bin/gsd-tools.js roadmap get-phase "${PHASE}" | jq -r '.section')
+PHASE_DESC=$(node ~/.claude/get-stuff-done/bin/gsd-tools.cjs roadmap get-phase "${PHASE}" | jq -r '.section')
 # Use requirements_content from INIT (already loaded via --include requirements)
 REQUIREMENTS=$(echo "$INIT" | jq -r '.requirements_content // empty' | grep -A100 "## Requirements" | head -50)
-STATE_SNAP=$(node ~/.claude/get-stuff-done/bin/gsd-tools.js state-snapshot)
+STATE_SNAP=$(node ~/.claude/get-stuff-done/bin/gsd-tools.cjs state-snapshot)
 # Extract decisions from state-snapshot JSON: jq '.decisions[] | "\(.phase): \(.summary) - \(.rationale)"'
 ```
 
@@ -202,15 +205,11 @@ CONTEXT_CONTENT=$(echo "$INIT" | jq -r '.context_content // empty')
 
 ## 8. Plan Creation
 
-Check team mode status (determined in Step 1.5):
+Use the team detection result from Step 1.5:
 
-```bash
-TEAM_ENABLED=$(node "$GSD_TOOLS" config-get team.enabled 2>/dev/null || echo "false")
-```
+### 8a. Solo Planning (single domain or team.auto disabled)
 
-### 8a. Solo Planning (team mode DISABLED — default)
-
-**If `TEAM_ENABLED` is "false":**
+**If `TEAM_PLANNING` is false (1 domain or team.auto=false):**
 
 Display banner:
 ```
@@ -271,9 +270,9 @@ Task(
 )
 ```
 
-### 8b. Team Planning (team mode ENABLED)
+### 8b. Team Planning (2+ domains auto-detected)
 
-**If `TEAM_ENABLED` is "true":**
+**If `TEAM_PLANNING` is true (2+ domains detected):**
 
 Display banner:
 ```
@@ -529,7 +528,59 @@ Offer: 1) Force proceed, 2) Provide guidance and retry, 3) Abandon
 
 ## 13. Present Final Status
 
-Route to `<offer_next>`.
+Route to `<offer_next>` OR `auto_advance` depending on flags/config.
+
+## 14. Auto-Advance Check
+
+Check for auto-advance trigger:
+
+1. Parse `--auto` flag from $ARGUMENTS
+2. Read `workflow.auto_advance` from config:
+   ```bash
+   AUTO_CFG=$(node ~/.claude/get-stuff-done/bin/gsd-tools.cjs config get workflow.auto_advance 2>/dev/null || echo "false")
+   ```
+
+**If `--auto` flag present OR `AUTO_CFG` is true:**
+
+Display banner:
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ GSD ► AUTO-ADVANCING TO EXECUTE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Plans ready. Spawning execute-phase...
+```
+
+Spawn execute-phase as Task:
+```
+Task(
+  prompt="Run /gsd:execute-phase ${PHASE}",
+  subagent_type="general-purpose",
+  description="Execute Phase ${PHASE}"
+)
+```
+
+**Handle execute-phase return:**
+- **PHASE COMPLETE** → Display final summary:
+  ```
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   GSD ► PHASE ${PHASE} COMPLETE ✓
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Auto-advance pipeline finished.
+
+  Next: /gsd:discuss-phase ${NEXT_PHASE} --auto
+  ```
+- **GAPS FOUND / VERIFICATION FAILED** → Display result, stop chain:
+  ```
+  Auto-advance stopped: Execution needs review.
+
+  Review the output above and continue manually:
+  /gsd:execute-phase ${PHASE}
+  ```
+
+**If neither `--auto` nor config enabled:**
+Route to `<offer_next>` (existing behavior).
 
 </process>
 

@@ -425,7 +425,7 @@ Executors update their team state at key moments:
 **On executor start:**
 ```bash
 # Read existing state, update status
-node ~/.claude/get-stuff-done/bin/gsd-tools.js team-state update \
+node ~/.claude/get-stuff-done/bin/gsd-tools.cjs team-state update \
   --phase "02" --plan "01" --team "backend" \
   --status "in_progress" \
   --started-at "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -433,14 +433,14 @@ node ~/.claude/get-stuff-done/bin/gsd-tools.js team-state update \
 
 **On task completion:**
 ```bash
-node ~/.claude/get-stuff-done/bin/gsd-tools.js team-state task-complete \
+node ~/.claude/get-stuff-done/bin/gsd-tools.cjs team-state task-complete \
   --phase "02" --plan "01" --team "backend" \
   --task-id "task-1" --commit "abc123f"
 ```
 
 **On plan completion:**
 ```bash
-node ~/.claude/get-stuff-done/bin/gsd-tools.js team-state complete \
+node ~/.claude/get-stuff-done/bin/gsd-tools.cjs team-state complete \
   --phase "02" --plan "01" --team "backend" \
   --summary-path ".planning/phases/02-auth/teams/backend/02-01-SUMMARY.md" \
   --contracts-fulfilled "auth-api"
@@ -448,7 +448,7 @@ node ~/.claude/get-stuff-done/bin/gsd-tools.js team-state complete \
 
 **On failure:**
 ```bash
-node ~/.claude/get-stuff-done/bin/gsd-tools.js team-state fail \
+node ~/.claude/get-stuff-done/bin/gsd-tools.cjs team-state fail \
   --phase "02" --plan "01" --team "backend" \
   --error "Context window exhausted at task-3"
 ```
@@ -459,14 +459,14 @@ Coordinator reads state to make decisions:
 
 ```bash
 # Get all team states for a phase
-node ~/.claude/get-stuff-done/bin/gsd-tools.js team-state list --phase "02"
+node ~/.claude/get-stuff-done/bin/gsd-tools.cjs team-state list --phase "02"
 
 # Check if wave is complete
-node ~/.claude/get-stuff-done/bin/gsd-tools.js team-state wave-check \
+node ~/.claude/get-stuff-done/bin/gsd-tools.cjs team-state wave-check \
   --phase "02" --wave 1
 
 # Detect conflicts
-node ~/.claude/get-stuff-done/bin/gsd-tools.js team-state conflicts --phase "02"
+node ~/.claude/get-stuff-done/bin/gsd-tools.cjs team-state conflicts --phase "02"
 
 # Get phase aggregate
 cat .planning/.team-state/_phase-02-summary.json
@@ -474,7 +474,7 @@ cat .planning/.team-state/_phase-02-summary.json
 
 ### Direct JSON Access
 
-When gsd-tools.js is not available, agents can read/write JSON directly:
+When gsd-tools.cjs is not available, agents can read/write JSON directly:
 
 ```bash
 # Read team state
@@ -485,7 +485,7 @@ for f in .planning/.team-state/02-01-*.json; do
   echo "$(basename $f): $(jq -r '.status' $f)"
 done
 
-# Write minimal state update (careful — use gsd-tools.js when available)
+# Write minimal state update (careful — use gsd-tools.cjs when available)
 jq '.status = "complete" | .completed_at = "2025-01-15T14:28:00Z"' \
   .planning/.team-state/02-01-backend.json > tmp && mv tmp .planning/.team-state/02-01-backend.json
 ```
@@ -552,7 +552,7 @@ When a phase is fully complete (all teams verified), clean up team state files:
 ## Guidelines
 
 - Team state files are the single source of truth for execution progress during a phase.
-- Always use gsd-tools.js for state updates when available; direct JSON manipulation is a fallback.
+- Always use gsd-tools.cjs for state updates when available; direct JSON manipulation is a fallback.
 - State transitions must follow the lifecycle rules. Never skip statuses (e.g., never go from "pending" directly to "complete").
 - The status_history array provides an audit trail. Never delete entries, only append.
 - File conflict detection should run before wave execution, not after.

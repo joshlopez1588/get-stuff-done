@@ -10,9 +10,13 @@ allowed-tools:
   - AskUserQuestion
 ---
 <objective>
-Initialize team configuration for multi-team project execution.
+Override automatic team configuration for a project.
 
-Sets up team infrastructure: config entries, TEAM-MATRIX.md template, and .team-state/ directory. After initialization, team-aware commands (/gsd:distribute-phase, /gsd:team-status, /gsd:team-handoff) become available.
+**Note:** Teams are enabled by default — `team.auto: true` means domain specialists are automatically detected and engaged during `/gsd:plan-phase` and `/gsd:execute-phase`. This command is only needed to:
+- Switch to a specific team mode (solo/distributed/hybrid)
+- Pre-define available teams instead of auto-detecting
+- Configure domain-specific model overrides
+- Create an explicit TEAM-MATRIX.md with custom domain boundaries
 
 Output: Updated config.json with team section, TEAM-MATRIX.md, and .planning/.team-state/ scaffolding.
 </objective>

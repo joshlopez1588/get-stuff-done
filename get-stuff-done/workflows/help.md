@@ -290,12 +290,39 @@ Create phases to close gaps identified by audit.
 
 Usage: `/gsd:plan-milestone-gaps`
 
+### Agent Teams (Automatic)
+
+Teams are **enabled by default**. When `/gsd:plan-phase` detects 2+ domains (frontend, backend, security, data, devops, testing), it automatically:
+- Spawns parallel domain-specialist planners
+- Generates interface contracts between teams
+- Routes executors to the correct domain specialists
+- Runs cross-team verification after execution
+
+No commands needed — teams just work transparently. Override with `/gsd:settings` (Teams toggle).
+
+**Optional team commands** (for advanced use only):
+- `/gsd:team-init` — Override automatic team configuration
+- `/gsd:team-status` — View team dashboard for current phase
+- `/gsd:team-handoff` — Manual handoff between teams
+- `/gsd:distribute-phase` — Manually assign plans to teams
+- `/gsd:resolve-conflict` — Resolve cross-team conflicts
+
+### Playwright E2E Testing (Automatic)
+
+Playwright E2E tests run automatically during phase verification if:
+- The project has Playwright installed (`npx playwright --version`)
+- Test files exist (`.spec.ts`/`.spec.js` files)
+- `testing.run_e2e_on_verify` is `true` in config (default)
+
+Failed tests are included in the verification gap report for automatic gap closure.
+
 ### Configuration
 
 **`/gsd:settings`**
 Configure workflow toggles and model profile interactively.
 
 - Toggle researcher, plan checker, verifier agents
+- Auto teams and E2E testing toggles
 - Select model profile (quality/balanced/budget)
 - Updates `.planning/config.json`
 

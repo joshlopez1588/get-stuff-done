@@ -544,7 +544,7 @@ cat "$PHASE_DIR/teams/CONTRACTS.md" 2>/dev/null
 cat "$PHASE_DIR/teams/TEAM-STATUS.md" 2>/dev/null
 
 # Load phase goal
-node ~/.claude/get-stuff-done/bin/gsd-tools.js roadmap get-phase "$PHASE_NUM"
+node ~/.claude/get-stuff-done/bin/gsd-tools.cjs roadmap get-phase "$PHASE_NUM"
 ```
 
 ### Step 2: Establish Must-Haves (Cross-Domain)
@@ -569,7 +569,7 @@ For each team, run standard artifact verification:
 
 ```bash
 for plan in "$PHASE_DIR/teams/"*-TEAM-PLAN.md; do
-  ARTIFACT_RESULT=$(node ~/.claude/get-stuff-done/bin/gsd-tools.js verify artifacts "$plan")
+  ARTIFACT_RESULT=$(node ~/.claude/get-stuff-done/bin/gsd-tools.cjs verify artifacts "$plan")
   echo "$(basename $plan): $ARTIFACT_RESULT"
 done
 ```
@@ -580,7 +580,7 @@ For each contract in CONTRACTS.md, run the appropriate wiring verification patte
 
 ```bash
 # Generate cross-team wiring report
-node ~/.claude/get-stuff-done/bin/gsd-tools.js team-contracts --phase "$PHASE_NUM"
+node ~/.claude/get-stuff-done/bin/gsd-tools.cjs team-contracts --phase "$PHASE_NUM"
 ```
 
 ### Step 5: Verify Contract Compliance

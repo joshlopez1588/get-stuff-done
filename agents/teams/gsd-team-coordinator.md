@@ -176,7 +176,7 @@ verify_contract() {
 Detection:
 ```bash
 # Compare files_modified across team plans
-node ~/.claude/get-stuff-done/bin/gsd-tools.js team-conflicts --phase "$PHASE_NUM"
+node ~/.claude/get-stuff-done/bin/gsd-tools.cjs team-conflicts --phase "$PHASE_NUM"
 ```
 
 Resolution strategy:
@@ -201,7 +201,7 @@ If unclear who should own: assign to the team where incorrect implementation wou
 Detection:
 ```bash
 # After provider completes, verify contract
-node ~/.claude/get-stuff-done/bin/gsd-tools.js team-contracts --phase "$PHASE_NUM"
+node ~/.claude/get-stuff-done/bin/gsd-tools.cjs team-contracts --phase "$PHASE_NUM"
 ```
 
 Resolution:
@@ -216,7 +216,7 @@ Resolution:
 
 Detection:
 ```bash
-node ~/.claude/get-stuff-done/bin/gsd-tools.js team-dependencies
+node ~/.claude/get-stuff-done/bin/gsd-tools.cjs team-dependencies
 ```
 
 Resolution:
@@ -485,7 +485,7 @@ cat "$PHASE_DIR/teams/TEAM-STATUS.md"
 # (Edit the relevant section)
 
 # Verify status consistency
-node ~/.claude/get-stuff-done/bin/gsd-tools.js team-matrix
+node ~/.claude/get-stuff-done/bin/gsd-tools.cjs team-matrix
 ```
 
 </team_status>
@@ -503,7 +503,7 @@ TEAM_CONFIG=$(cat .planning/config.json 2>/dev/null)
 cat .planning/STATE.md 2>/dev/null
 
 # Load phase info
-INIT=$(node ~/.claude/get-stuff-done/bin/gsd-tools.js init execute-phase "${PHASE}")
+INIT=$(node ~/.claude/get-stuff-done/bin/gsd-tools.cjs init execute-phase "${PHASE}")
 ```
 
 If team mode disabled, return "COORDINATOR NOT NEEDED" message.
@@ -534,7 +534,7 @@ for plan in "$PHASE_DIR/teams/"*-TEAM-PLAN.md; do
   wave=$(grep "^wave:" "$plan" | head -1)
   if echo "$wave" | grep -q "1"; then
     echo "Wave 1: $plan"
-    node ~/.claude/get-stuff-done/bin/gsd-tools.js frontmatter validate "$plan" --schema team-plan
+    node ~/.claude/get-stuff-done/bin/gsd-tools.cjs frontmatter validate "$plan" --schema team-plan
   fi
 done
 ```
@@ -592,7 +592,7 @@ Deadlock = circular wait among teams.
 
 ```bash
 # Check for circular dependencies in current blocked teams
-node ~/.claude/get-stuff-done/bin/gsd-tools.js team-dependencies
+node ~/.claude/get-stuff-done/bin/gsd-tools.cjs team-dependencies
 ```
 
 If circular wait detected:
@@ -628,10 +628,10 @@ When all teams report COMPLETE:
 
 ```bash
 # Final verification
-node ~/.claude/get-stuff-done/bin/gsd-tools.js team-matrix
+node ~/.claude/get-stuff-done/bin/gsd-tools.cjs team-matrix
 
 # Commit team status
-node ~/.claude/get-stuff-done/bin/gsd-tools.js commit "docs($PHASE): team execution complete" --files "$PHASE_DIR/teams/TEAM-STATUS.md"
+node ~/.claude/get-stuff-done/bin/gsd-tools.cjs commit "docs($PHASE): team execution complete" --files "$PHASE_DIR/teams/TEAM-STATUS.md"
 ```
 </step>
 

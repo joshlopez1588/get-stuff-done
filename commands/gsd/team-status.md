@@ -32,7 +32,7 @@ Phase: $ARGUMENTS (optional — auto-detects current phase if omitted)
 ## 0. Check Team Configuration
 
 ```bash
-TEAM_CONFIG=$(node ~/.claude/get-stuff-done/bin/gsd-tools.js init team-status "${PHASE:-}")
+TEAM_CONFIG=$(node ~/.claude/get-stuff-done/bin/gsd-tools.cjs init team-status "${PHASE:-}")
 ```
 
 Read `.planning/config.json` and check `team.enabled`:
@@ -77,7 +77,7 @@ cat .planning/TEAM-MATRIX.md 2>/dev/null
 ls .planning/.team-state/ 2>/dev/null
 
 # Analyze teams for this phase
-node ~/.claude/get-stuff-done/bin/gsd-tools.js analyze-teams "${PHASE}"
+node ~/.claude/get-stuff-done/bin/gsd-tools.cjs analyze-teams "${PHASE}"
 ```
 
 Read the phase directory for team plans:
@@ -104,7 +104,7 @@ done
 ## 4. Identify Blocking Dependencies
 
 ```bash
-node ~/.claude/get-stuff-done/bin/gsd-tools.js team-dependencies "${PHASE}"
+node ~/.claude/get-stuff-done/bin/gsd-tools.cjs team-dependencies "${PHASE}"
 ```
 
 Parse team_dependencies from TEAM-PLAN.md frontmatter across all team plans. Identify:

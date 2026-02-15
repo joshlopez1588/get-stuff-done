@@ -4,7 +4,8 @@
   "workflow": {
     "research": true,
     "plan_check": true,
-    "verifier": true
+    "verifier": true,
+    "auto_advance": false
   },
   "planning": {
     "commit_docs": true,
@@ -31,5 +32,14 @@
   "safety": {
     "always_confirm_destructive": true,
     "always_confirm_external_services": true
+  },
+  "team": {
+    "auto": true,
+    "mode": "distributed",
+    "model_overrides": {}
+  },
+  "testing": {
+    "e2e_framework": "playwright",
+    "run_e2e_on_verify": true
   }
 }

@@ -289,7 +289,7 @@ For receiving team pending plans:
 ## 7. Commit and Display Summary
 
 ```bash
-node ~/.claude/get-stuff-done/bin/gsd-tools.js commit "docs(${PHASE}): handoff ${FROM_TEAM} → ${TO_TEAM}" --files .planning/phases/${PHASE}-*/teams/HANDOFF-${FROM_TEAM}-to-${TO_TEAM}.md .planning/.team-state/
+node ~/.claude/get-stuff-done/bin/gsd-tools.cjs commit "docs(${PHASE}): handoff ${FROM_TEAM} → ${TO_TEAM}" --files .planning/phases/${PHASE}-*/teams/HANDOFF-${FROM_TEAM}-to-${TO_TEAM}.md .planning/.team-state/
 ```
 
 ```

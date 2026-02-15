@@ -80,7 +80,7 @@ If no CONFLICTS.md exists, scan for conflicts:
 
 ```bash
 # Find shared file modifications across team plans
-node ~/.claude/get-stuff-done/bin/gsd-tools.js team-conflicts "${PHASE}"
+node ~/.claude/get-stuff-done/bin/gsd-tools.cjs team-conflicts "${PHASE}"
 ```
 
 Detect conflicts from:
@@ -214,7 +214,7 @@ For each resolved conflict:
 **Update STATE.md decisions section:**
 
 ```bash
-node ~/.claude/get-stuff-done/bin/gsd-tools.js state add-decision \
+node ~/.claude/get-stuff-done/bin/gsd-tools.cjs state add-decision \
   --phase "${PHASE}" \
   --summary "Conflict resolved: {title} — chose {option}. {team-a} will {action}, {team-b} will {action}."
 ```
@@ -265,7 +265,7 @@ Update frontmatter or task details to reflect the resolved conflict:
 ## 9. Commit and Display Summary
 
 ```bash
-node ~/.claude/get-stuff-done/bin/gsd-tools.js commit "docs(${PHASE}): resolve team conflicts" --files .planning/phases/${PHASE}-*/teams/CONFLICTS.md .planning/phases/${PHASE}-*/teams/CONTRACTS.md .planning/STATE.md
+node ~/.claude/get-stuff-done/bin/gsd-tools.cjs commit "docs(${PHASE}): resolve team conflicts" --files .planning/phases/${PHASE}-*/teams/CONFLICTS.md .planning/phases/${PHASE}-*/teams/CONTRACTS.md .planning/STATE.md
 ```
 
 ```

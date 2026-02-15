@@ -1,5 +1,5 @@
 <purpose>
-Interactive configuration of GSD workflow agents (research, plan_check, verifier) and model profile selection via multi-question prompt. Updates .planning/config.json with user preferences.
+Interactive configuration of GSD workflow agents (research, plan_check, verifier) and model profile selection via multi-question prompt. Updates .planning/config.json with user preferences. Optionally saves settings as global defaults (~/.gsd/defaults.json) for future projects.
 </purpose>
 
 <required_reading>
@@ -12,8 +12,8 @@ Read all files referenced by the invoking prompt's execution_context before star
 Ensure config exists and load current state:
 
 ```bash
-node ~/.claude/get-stuff-done/bin/gsd-tools.js config-ensure-section
-INIT=$(node ~/.claude/get-stuff-done/bin/gsd-tools.js state load)
+node ~/.claude/get-stuff-done/bin/gsd-tools.cjs config-ensure-section
+INIT=$(node ~/.claude/get-stuff-done/bin/gsd-tools.cjs state load)
 ```
 
 Creates `.planning/config.json` with defaults if missing and loads current config values.
@@ -30,6 +30,9 @@ Parse current values (default to `true` if not present):
 - `workflow.verifier` — spawn verifier during execute-phase
 - `model_profile` — which model each agent uses (default: `balanced`)
 - `git.branching_strategy` — branching approach (default: `"none"`)
+- `team.auto` — automatically detect and use domain specialist teams (default: `true`)
+- `testing.e2e_framework` — E2E testing framework (default: `"playwright"`)
+- `testing.run_e2e_on_verify` — run E2E tests during phase verification (default: `true`)
 </step>
 
 <step name="present_settings">
@@ -75,6 +78,15 @@ AskUserQuestion([
     ]
   },
   {
+    question: "Auto-advance pipeline? (discuss → plan → execute automatically)",
+    header: "Auto",
+    multiSelect: false,
+    options: [
+      { label: "No (Recommended)", description: "Manual /clear + paste between stages" },
+      { label: "Yes", description: "Chain stages via Task() subagents (same isolation)" }
+    ]
+  },
+  {
     question: "Git branching strategy?",
     header: "Branching",
     multiSelect: false,
@@ -82,6 +94,24 @@ AskUserQuestion([
       { label: "None (Recommended)", description: "Commit directly to current branch" },
       { label: "Per Phase", description: "Create branch for each phase (gsd/phase-{N}-{name})" },
       { label: "Per Milestone", description: "Create branch for entire milestone (gsd/{version}-{name})" }
+    ]
+  },
+  {
+    question: "Auto-detect and use domain specialist teams?",
+    header: "Teams",
+    multiSelect: false,
+    options: [
+      { label: "Auto (Recommended)", description: "Detect domains automatically, spin up specialist teams when 2+ domains found" },
+      { label: "Off", description: "Always use solo planning (no domain specialists)" }
+    ]
+  },
+  {
+    question: "Run Playwright E2E tests during phase verification?",
+    header: "E2E Tests",
+    multiSelect: false,
+    options: [
+      { label: "Yes (Recommended)", description: "Run Playwright tests as part of verification" },
+      { label: "No", description: "Skip E2E tests during verification" }
     ]
   }
 ])
@@ -98,15 +128,74 @@ Merge new settings into existing config.json:
   "workflow": {
     "research": true/false,
     "plan_check": true/false,
-    "verifier": true/false
+    "verifier": true/false,
+    "auto_advance": true/false
   },
   "git": {
     "branching_strategy": "none" | "phase" | "milestone"
+  },
+  "team": {
+    "auto": true/false,
+    "mode": "distributed",
+    "model_overrides": {}
+  },
+  "testing": {
+    "e2e_framework": "playwright",
+    "run_e2e_on_verify": true/false
   }
 }
 ```
 
 Write updated config to `.planning/config.json`.
+</step>
+
+<step name="save_as_defaults">
+Ask whether to save these settings as global defaults for future projects:
+
+```
+AskUserQuestion([
+  {
+    question: "Save these as default settings for all new projects?",
+    header: "Defaults",
+    multiSelect: false,
+    options: [
+      { label: "Yes", description: "New projects start with these settings (saved to ~/.gsd/defaults.json)" },
+      { label: "No", description: "Only apply to this project" }
+    ]
+  }
+])
+```
+
+If "Yes": write the same config object (minus project-specific fields like `brave_search`) to `~/.gsd/defaults.json`:
+
+```bash
+mkdir -p ~/.gsd
+```
+
+Write `~/.gsd/defaults.json` with:
+```json
+{
+  "mode": <current>,
+  "depth": <current>,
+  "model_profile": <current>,
+  "commit_docs": <current>,
+  "parallelization": <current>,
+  "branching_strategy": <current>,
+  "workflow": {
+    "research": <current>,
+    "plan_check": <current>,
+    "verifier": <current>,
+    "auto_advance": <current>
+  },
+  "team": {
+    "auto": <current>
+  },
+  "testing": {
+    "e2e_framework": "playwright",
+    "run_e2e_on_verify": <current>
+  }
+}
+```
 </step>
 
 <step name="confirm">
@@ -123,7 +212,11 @@ Display:
 | Plan Researcher      | {On/Off} |
 | Plan Checker         | {On/Off} |
 | Execution Verifier   | {On/Off} |
+| Auto-Advance         | {On/Off} |
 | Git Branching        | {None/Per Phase/Per Milestone} |
+| Auto Teams           | {Auto/Off} |
+| E2E Tests on Verify  | {On/Off} |
+| Saved as Defaults    | {Yes/No} |
 
 These settings apply to future /gsd:plan-phase and /gsd:execute-phase runs.
 
@@ -139,7 +232,8 @@ Quick commands:
 
 <success_criteria>
 - [ ] Current config read
-- [ ] User presented with 5 settings (profile + 3 workflow toggles + git branching)
-- [ ] Config updated with model_profile, workflow, and git sections
+- [ ] User presented with 8 settings (profile + 4 workflow toggles + git branching + teams + E2E)
+- [ ] Config updated with model_profile, workflow, git, team, and testing sections
+- [ ] User offered to save as global defaults (~/.gsd/defaults.json)
 - [ ] Changes confirmed to user
 </success_criteria>

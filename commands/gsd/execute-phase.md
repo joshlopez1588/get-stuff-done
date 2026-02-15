@@ -31,12 +31,12 @@ Phase: $ARGUMENTS
 
 **Flags:**
 - `--gaps-only` — Execute only gap closure plans (plans with `gap_closure: true` in frontmatter). Use after verify-work creates fix plans.
-- `--team <team-name>` — Execute only the specified team's plans (e.g., `--team frontend`). Without this flag, all plans execute (existing behavior). If `team.enabled` is `true` in `.planning/config.json`, team routing is applied automatically based on plan frontmatter.
+- `--team <team-name>` — Execute only the specified team's plans (e.g., `--team frontend`). Without this flag, all plans execute (existing behavior). Team routing activates automatically when team plans are detected.
 
-**Team mode behavior:**
+**Team mode behavior (automatic):**
 - `--team frontend` executes only plans where `team: frontend` or `assigned_team: frontend` in frontmatter
 - Without `--team` flag: executes all plans regardless of team assignment (default behavior)
-- If `team.enabled` in config: automatically uses team routing — plans are grouped by team, wave ordering respects cross-team dependencies, and team state is updated on completion
+- Team routing activates automatically when plans have `team:` frontmatter or `CONTRACTS.md` exists — no manual setup needed
 
 @.planning/ROADMAP.md
 @.planning/STATE.md

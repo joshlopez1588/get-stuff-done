@@ -34,13 +34,15 @@ Phase number: $ARGUMENTS (optional — auto-detects next unplanned phase if omit
 - `--skip-research` — Skip research, go straight to planning
 - `--gaps` — Gap closure mode (reads VERIFICATION.md, skips research)
 - `--skip-verify` — Skip verification loop
-- `--teams` — Force team planning mode (parallel domain planners). Spawns gsd-team-planner agents per domain. Each team gets its own TEAM-PLAN.md with cross-team contracts.
+- `--teams` — Force team planning mode even for single-domain phases. Spawns gsd-team-planner agents per domain. Each team gets its own TEAM-PLAN.md with cross-team contracts.
 - `--team <name>` — Plan for a single team only (e.g., `--team frontend`). Creates plans scoped to that team's domain.
+- `--no-teams` — Force solo planning mode even for multi-domain phases.
 
-**Team mode behavior:**
-- `--teams` forces team planning mode regardless of config — spawns parallel domain planners that produce team-scoped TEAM-PLAN.md files and CONTRACTS.md
+**Team mode behavior (automatic by default):**
+- Teams are auto-detected: if 2+ domains found in phase content, team planning activates automatically
+- `--teams` forces team planning even for single-domain phases
+- `--no-teams` forces solo planning even for multi-domain phases
 - `--team frontend` plans for a single team only — useful for re-planning one team's work without affecting others
-- Without team flags: uses `config.team.enabled` to decide. If `true`, automatically uses team planning. If `false`, standard single-planner mode.
 
 Normalize phase input in step 2 before any directory lookups.
 </context>
